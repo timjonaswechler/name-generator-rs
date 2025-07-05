@@ -7,4 +7,3 @@ pub mod profile;
 pub mod loader;
 
 pub use profile::*;
-pub use loader::*;

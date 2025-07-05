@@ -192,7 +192,6 @@ impl LanguageProfile {
 mod tests {
     use super::*;
     use std::fs;
-    use std::io::Write;
     
     #[test]
     fn test_simple_profile_creation_and_validation() {
