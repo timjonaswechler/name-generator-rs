@@ -23,13 +23,7 @@
 pub mod categories;
 pub mod phonetic_rules;
 pub mod symbol_types;
-mod core;
-mod macros;
-mod pattern;
-mod symbols;
-
-// Re-exports for public API
-pub use categories::*;
-pub use core::*;
-pub use pattern::Pattern;
-pub use symbols::{SYMBOL_MAP, DARK_SYMBOL_MAP, BRIGHT_SYMBOL_MAP, EXOTIC_SYMBOL_MAP};
+pub mod core;
+pub mod macros;
+pub mod pattern;
+pub mod symbols;

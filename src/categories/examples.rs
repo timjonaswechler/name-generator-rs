@@ -6,10 +6,10 @@
 //! 2. Rules-only approach: Standard symbols + phonetic rules filter the sound
 //! 3. Hybrid approach: Custom symbols + additional rules for maximum control
 
-use super::super::{
-    NameCategory,
-    phonetic_rules::{PhoneticRules, profiles},
-    symbol_types::{SymbolMapDefinition, create_symbol_map},
+use crate::{
+    core::NameCategory,
+    phonetic_rules::{profiles, PhoneticRules},
+    symbol_types::{create_symbol_map, SymbolMapDefinition},
     symbols::{BRIGHT_SYMBOL_MAP, DARK_SYMBOL_MAP, EXOTIC_SYMBOL_MAP, SYMBOL_MAP},
 };
 use std::collections::HashMap;
@@ -38,7 +38,7 @@ impl NameCategory for DarkStarSymbolOnly {
     }
 
     fn symbol_map(&self) -> &HashMap<&'static str, Vec<&'static str>> {
-        &DARK_SYMBOL_MAP // Use only dark sounds
+        &DARK_SYMBOL_MAP
     }
 
     // No phonetic rules needed - symbol map handles the sound profile
@@ -350,8 +350,8 @@ impl NameCategory for DraconicStar {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::utilities::name_generator::Name;
-    use rand::{SeedableRng, thread_rng};
+    use crate::core::Name;
+    use rand::{thread_rng, SeedableRng};
     use rand_chacha::ChaCha8Rng;
 
     #[test]

@@ -3,9 +3,9 @@
 //! This file demonstrates how to use the new three-macro system and serves as a test
 //! to ensure the macros work correctly.
 
-use crate::utilities::name_generator::{NameCategory, Name};
-use crate::utilities::name_generator::symbol_types::SymbolMapDefinition;
-use crate::{define_symbol_profile, define_phonetic_rules, define_name_category};
+use crate::core::Name;
+use crate::symbol_types::SymbolMapDefinition;
+use crate::{define_name_category, define_phonetic_rules, define_symbol_profile};
 
 // Test 1: Define a simple symbol profile
 define_symbol_profile! {
@@ -117,9 +117,13 @@ mod tests {
         assert_eq!(TESTDARKRULES.name, "TestDarkRules");
         assert!(TESTDARKRULES.forbidden_sequences.contains(&"ii"));
         assert!(TESTDARKRULES.preferred_sequences.contains(&"th"));
-        
+
         // Test compatibility maps
-        assert!(TESTDARKRULES.vowel_consonant_compatibility.contains_key(&'a'));
-        assert!(TESTDARKRULES.consonant_vowel_compatibility.contains_key(&'r'));
+        assert!(TESTDARKRULES
+            .vowel_consonant_compatibility
+            .contains_key(&'a'));
+        assert!(TESTDARKRULES
+            .consonant_vowel_compatibility
+            .contains_key(&'r'));
     }
 }

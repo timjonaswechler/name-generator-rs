@@ -56,7 +56,7 @@ macro_rules! define_symbol_profile {
         // Define the symbol map definition struct
         pub struct $name;
 
-        impl $crate::utilities::name_generator::symbol_types::SymbolMapDefinition for $name {
+        impl $crate::symbol_types::SymbolMapDefinition for $name {
             fn syllables() -> Vec<&'static str> {
                 vec![$($syllable),*]
             }
@@ -84,7 +84,7 @@ macro_rules! define_symbol_profile {
 
         // Generate the symbol map using the existing create_symbol_map! macro
         paste::paste! {
-            $crate::utilities::name_generator::symbol_types::create_symbol_map!([<$name:upper _SYMBOL_MAP>], $name);
+            $crate::symbol_types::create_symbol_map!([<$name:upper _SYMBOL_MAP>], $name);
         }
     };
 }
@@ -150,7 +150,7 @@ macro_rules! define_phonetic_rules {
     ) => {
         paste::paste! {
             lazy_static::lazy_static! {
-                pub static ref [<$name:upper>]: $crate::utilities::name_generator::phonetic_rules::PhoneticRules = $crate::utilities::name_generator::phonetic_rules::PhoneticRules {
+                pub static ref [<$name:upper>]: crate::phonetic_rules::PhoneticRules = crate::phonetic_rules::PhoneticRules {
                     name: stringify!($name),
                     forbidden_sequences: vec![$($forbidden),*],
                     preferred_sequences: vec![$($preferred),*],
@@ -233,7 +233,7 @@ macro_rules! define_name_category {
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
         pub struct $name;
 
-        impl $crate::utilities::name_generator::NameCategory for $name {
+        impl $crate::core::NameCategory for $name {
             type Variant = Self;
 
             fn pattern(&self) -> &'static str {
@@ -242,11 +242,11 @@ macro_rules! define_name_category {
 
             fn symbol_map(&self) -> &std::collections::HashMap<&'static str, Vec<&'static str>> {
                 paste::paste! {
-                    &[<$symbol_profile:upper _SYMBOL_MAP>]
+                    &*[<$symbol_profile:upper _SYMBOL_MAP>]
                 }
             }
 
-            fn phonetic_rules(&self) -> Option<&$crate::utilities::name_generator::phonetic_rules::PhoneticRules> {
+            fn phonetic_rules(&self) -> Option<&$crate::phonetic_rules::PhoneticRules> {
                 paste::paste! {
                     Some(&*[<$phonetic_rules:upper>])
                 }
@@ -264,7 +264,7 @@ macro_rules! define_name_category {
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
         pub struct $name;
 
-        impl $crate::utilities::name_generator::NameCategory for $name {
+        impl $crate::core::NameCategory for $name {
             type Variant = Self;
 
             fn pattern(&self) -> &'static str {
@@ -273,7 +273,7 @@ macro_rules! define_name_category {
 
             fn symbol_map(&self) -> &std::collections::HashMap<&'static str, Vec<&'static str>> {
                 paste::paste! {
-                    &[<$symbol_profile:upper _SYMBOL_MAP>]
+                    &*[<$symbol_profile:upper _SYMBOL_MAP>]
                 }
             }
         }
@@ -289,14 +289,14 @@ macro_rules! define_name_category {
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
         pub struct $name;
 
-        impl $crate::utilities::name_generator::NameCategory for $name {
+        impl $crate::core::NameCategory for $name {
             type Variant = Self;
 
             fn pattern(&self) -> &'static str {
                 $pattern
             }
 
-            fn phonetic_rules(&self) -> Option<&$crate::utilities::name_generator::phonetic_rules::PhoneticRules> {
+            fn phonetic_rules(&self) -> Option<&$crate::phonetic_rules::PhoneticRules> {
                 paste::paste! {
                     Some(&*[<$phonetic_rules:upper>])
                 }
@@ -313,7 +313,7 @@ macro_rules! define_name_category {
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
         pub struct $name;
 
-        impl $crate::utilities::name_generator::NameCategory for $name {
+        impl $crate::core::NameCategory for $name {
             type Variant = Self;
 
             fn pattern(&self) -> &'static str {
