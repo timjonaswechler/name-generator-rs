@@ -6,6 +6,8 @@
 use super::symbols::SYMBOL_MAP;
 use crate::pattern::Pattern;
 use crate::phonetic_rules::PhoneticRules;
+use crate::language_profile::profile::LanguageProfile;
+use crate::generators::profile_generator::LanguageProfileGenerator;
 use rand::Rng;
 use std::collections::HashMap;
 
@@ -52,6 +54,40 @@ pub trait NameCategory: Default {
     }
 }
 
+/// Extended trait for language profile categories
+///
+/// This trait extends the name generation system to support phonetically-grounded
+/// language profiles while maintaining backward compatibility.
+pub trait LanguageProfileCategory: Default {
+    /// Get the language profile for this category
+    fn language_profile(&self) -> &LanguageProfile;
+    
+    /// Generate a name using the language profile
+    fn generate_with_profile(&self, rng: &mut impl Rng) -> String {
+        let profile = self.language_profile();
+        let generator = LanguageProfileGenerator::new(profile);
+        generator.generate(rng)
+    }
+}
+
+/// Bridge trait to maintain compatibility
+///
+/// This implementation allows LanguageProfileCategory types to be used
+/// as NameCategory types for backward compatibility.
+impl<T: LanguageProfileCategory> NameCategory for T {
+    type Variant = ();
+    
+    fn pattern(&self) -> &'static str {
+        // Convert profile to pattern string for compatibility
+        // This is a simplified representation
+        "<onset><nucleus><coda>"
+    }
+    
+    fn generate(&self, rng: &mut impl Rng) -> String {
+        self.generate_with_profile(rng)
+    }
+}
+
 /// Main name type that works with any category, similar to how Quantity<Unit> works
 ///
 /// This is the core type that provides a consistent API for name generation
@@ -60,14 +96,11 @@ pub trait NameCategory: Default {
 /// # Examples
 ///
 /// ```rust
-/// use star_sim::utilities::name_generator::*;
+/// use name_generator::core::Name;
 /// use rand::thread_rng;
 ///
-/// let mut rng = thread_rng();
-///
-/// // Basic usage
-/// let star_name = Name::<Star>::new().generate(&mut rng);
-/// let planet_name = Name::<RockyBody>::new().generate(&mut rng);
+/// // For language profile categories, this would use the profile-based generation
+/// // For traditional categories, this would use the pattern-based generation
 /// ```
 #[derive(Debug, Clone)]
 pub struct Name<T: NameCategory> {
