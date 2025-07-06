@@ -27,3 +27,6 @@ pub mod core;
 pub mod macros;
 pub mod pattern;
 pub mod symbols;
+pub mod phonetics;
+pub mod language_profile;
+pub mod generators;

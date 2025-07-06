@@ -1,0 +1,260 @@
+# German Language Profile
+# Phonetically-grounded German name generation profile
+
+name: "German"
+phonetic_inventory:
+  phonemes:
+    # Consonants
+    - ipa: "[p]"
+      phoneme_type: "Consonant"
+      grapheme: "p"
+      frequency: 0.8
+    - ipa: "[b]"
+      phoneme_type: "Consonant"
+      grapheme: "b"
+      frequency: 0.6
+    - ipa: "[t]"
+      phoneme_type: "Consonant"
+      grapheme: "t"
+      frequency: 0.9
+    - ipa: "[d]"
+      phoneme_type: "Consonant"
+      grapheme: "d"
+      frequency: 0.7
+    - ipa: "[k]"
+      phoneme_type: "Consonant"
+      grapheme: "k"
+      frequency: 0.8
+    - ipa: "[g]"
+      phoneme_type: "Consonant"
+      grapheme: "g"
+      frequency: 0.6
+    - ipa: "[f]"
+      phoneme_type: "Consonant"
+      grapheme: "f"
+      frequency: 0.7
+    - ipa: "[v]"
+      phoneme_type: "Consonant"
+      grapheme: "w"
+      frequency: 0.5
+    - ipa: "[s]"
+      phoneme_type: "Consonant"
+      grapheme: "s"
+      frequency: 0.9
+    - ipa: "[z]"
+      phoneme_type: "Consonant"
+      grapheme: "s"
+      frequency: 0.4
+    - ipa: "[ʃ]"
+      phoneme_type: "Consonant"
+      grapheme: "sch"
+      frequency: 0.6
+    - ipa: "[h]"
+      phoneme_type: "Consonant"
+      grapheme: "h"
+      frequency: 0.7
+    - ipa: "[m]"
+      phoneme_type: "Consonant"
+      grapheme: "m"
+      frequency: 0.8
+    - ipa: "[n]"
+      phoneme_type: "Consonant"
+      grapheme: "n"
+      frequency: 0.9
+    - ipa: "[l]"
+      phoneme_type: "Consonant"
+      grapheme: "l"
+      frequency: 0.8
+    - ipa: "[ʁ]"
+      phoneme_type: "Consonant"
+      grapheme: "r"
+      frequency: 0.7
+    - ipa: "[j]"
+      phoneme_type: "Consonant"
+      grapheme: "j"
+      frequency: 0.5
+    
+    # Vowels
+    - ipa: "[a]"
+      phoneme_type: "Vowel"
+      grapheme: "a"
+      frequency: 0.9
+    - ipa: "[ɛ]"
+      phoneme_type: "Vowel"
+      grapheme: "e"
+      frequency: 0.8
+    - ipa: "[e]"
+      phoneme_type: "Vowel"
+      grapheme: "e"
+      frequency: 0.7
+    - ipa: "[ɪ]"
+      phoneme_type: "Vowel"
+      grapheme: "i"
+      frequency: 0.8
+    - ipa: "[i]"
+      phoneme_type: "Vowel"
+      grapheme: "i"
+      frequency: 0.7
+    - ipa: "[ɔ]"
+      phoneme_type: "Vowel"
+      grapheme: "o"
+      frequency: 0.6
+    - ipa: "[o]"
+      phoneme_type: "Vowel"
+      grapheme: "o"
+      frequency: 0.5
+    - ipa: "[ʊ]"
+      phoneme_type: "Vowel"
+      grapheme: "u"
+      frequency: 0.6
+    - ipa: "[u]"
+      phoneme_type: "Vowel"
+      grapheme: "u"
+      frequency: 0.5
+    
+    # Diphthongs
+    - ipa: "[aɪ]"
+      phoneme_type: "Vowel"
+      grapheme: "ei"
+      frequency: 0.5
+    - ipa: "[aʊ]"
+      phoneme_type: "Vowel"
+      grapheme: "au"
+      frequency: 0.4
+  
+  phoneme_groups:
+    front_vowels: ["[i]", "[ɪ]", "[e]", "[ɛ]"]
+    back_vowels: ["[u]", "[ʊ]", "[o]", "[ɔ]", "[a]"]
+    diphthongs: ["[aɪ]", "[aʊ]"]
+    plosives: ["[p]", "[b]", "[t]", "[d]", "[k]", "[g]"]
+    fricatives: ["[f]", "[v]", "[s]", "[z]", "[ʃ]", "[h]"]
+    nasals: ["[m]", "[n]"]
+    liquids: ["[l]", "[ʁ]"]
+
+syllable_structure:
+  patterns:
+    - pattern: "CV"
+      frequency: 0.3
+    - pattern: "CVC"
+      frequency: 0.4
+    - pattern: "VC"
+      frequency: 0.1
+    - pattern: "V"
+      frequency: 0.05
+    - pattern: "CCVC"
+      frequency: 0.1
+    - pattern: "CVCC"
+      frequency: 0.05
+  
+  onsets:
+    - phonemes: ["[p]"]
+      frequency: 0.8
+    - phonemes: ["[b]"]
+      frequency: 0.6
+    - phonemes: ["[t]"]
+      frequency: 0.9
+    - phonemes: ["[d]"]
+      frequency: 0.7
+    - phonemes: ["[k]"]
+      frequency: 0.8
+    - phonemes: ["[g]"]
+      frequency: 0.6
+    - phonemes: ["[f]"]
+      frequency: 0.7
+    - phonemes: ["[v]"]
+      frequency: 0.5
+    - phonemes: ["[s]"]
+      frequency: 0.9
+    - phonemes: ["[z]"]
+      frequency: 0.4
+    - phonemes: ["[ʃ]"]
+      frequency: 0.6
+    - phonemes: ["[h]"]
+      frequency: 0.7
+    - phonemes: ["[m]"]
+      frequency: 0.8
+    - phonemes: ["[n]"]
+      frequency: 0.9
+    - phonemes: ["[l]"]
+      frequency: 0.8
+    - phonemes: ["[ʁ]"]
+      frequency: 0.7
+    - phonemes: ["[j]"]
+      frequency: 0.5
+    # Consonant clusters
+    - phonemes: ["[ʃ]", "[t]"]
+      frequency: 0.4
+    - phonemes: ["[ʃ]", "[p]"]
+      frequency: 0.3
+    - phonemes: ["[s]", "[t]"]
+      frequency: 0.3
+    - phonemes: ["[s]", "[p]"]
+      frequency: 0.3
+    - phonemes: []  # Empty onset
+      frequency: 0.2
+  
+  nuclei:
+    - phonemes: ["[a]"]
+      frequency: 0.9
+    - phonemes: ["[ɛ]"]
+      frequency: 0.8
+    - phonemes: ["[e]"]
+      frequency: 0.7
+    - phonemes: ["[ɪ]"]
+      frequency: 0.8
+    - phonemes: ["[i]"]
+      frequency: 0.7
+    - phonemes: ["[ɔ]"]
+      frequency: 0.6
+    - phonemes: ["[o]"]
+      frequency: 0.5
+    - phonemes: ["[ʊ]"]
+      frequency: 0.6
+    - phonemes: ["[u]"]
+      frequency: 0.5
+    - phonemes: ["[aɪ]"]
+      frequency: 0.5
+    - phonemes: ["[aʊ]"]
+      frequency: 0.4
+  
+  codas:
+    - phonemes: []  # Empty coda
+      frequency: 0.3
+    - phonemes: ["[t]"]
+      frequency: 0.8
+    - phonemes: ["[n]"]
+      frequency: 0.9
+    - phonemes: ["[s]"]
+      frequency: 0.7
+    - phonemes: ["[ʁ]"]
+      frequency: 0.6
+    - phonemes: ["[l]"]
+      frequency: 0.6
+    - phonemes: ["[m]"]
+      frequency: 0.5
+    - phonemes: ["[k]"]
+      frequency: 0.4
+    - phonemes: ["[p]"]
+      frequency: 0.3
+    - phonemes: ["[f]"]
+      frequency: 0.3
+    # Consonant clusters
+    - phonemes: ["[n]", "[t]"]
+      frequency: 0.4
+    - phonemes: ["[s]", "[t]"]
+      frequency: 0.4
+    - phonemes: ["[ʁ]", "[t]"]
+      frequency: 0.3
+    - phonemes: ["[l]", "[t]"]
+      frequency: 0.3
+
+word_composition:
+  min_syllables: 1
+  max_syllables: 3
+  prefixes: []
+  suffixes: []
+  forbidden_transitions: []
+
+style_rules:
+  harmony_rules: []
+  frequency_adjustments: {}
