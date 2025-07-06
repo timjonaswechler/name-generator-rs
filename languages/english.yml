@@ -329,10 +329,59 @@ syllable_structure:
 word_composition:
   min_syllables: 1
   max_syllables: 3
-  prefixes: []
-  suffixes: []
-  forbidden_transitions: []
+  prefixes:
+    - grapheme: "pre"
+      phonemes: ["[p]", "[r]", "[i]"]
+      frequency: 0.2
+    - grapheme: "un"
+      phonemes: ["[ʌ]", "[n]"]
+      frequency: 0.3
+    - grapheme: "re"
+      phonemes: ["[r]", "[i]"]
+      frequency: 0.25
+  suffixes:
+    - grapheme: "er"
+      phonemes: ["[ə]", "[r]"]
+      frequency: 0.4
+    - grapheme: "ing"
+      phonemes: ["[ɪ]", "[ŋ]"]
+      frequency: 0.3
+    - grapheme: "ly"
+      phonemes: ["[l]", "[i]"]
+      frequency: 0.2
+  forbidden_transitions:
+    - coda: ["[k]"]
+      onset: ["[g]"]
+      forbidden: true
+    - coda: ["[p]"]
+      onset: ["[b]"]
+      forbidden: true
+    - coda: ["[t]"]
+      onset: ["[d]"]
+      forbidden: true
+    - coda: ["[θ]"]
+      onset: ["[ð]"]
+      forbidden: true
 
 style_rules:
-  harmony_rules: []
-  frequency_adjustments: {}
+  harmony_rules:
+    - name: "vowel_reduction"
+      condition: "unstressed_syllable"
+      requirement: "prefer_schwa"
+      strength: 0.6
+    - name: "consonant_cluster_simplification"
+      condition: "has_complex_cluster"
+      requirement: "simplify_cluster"
+      strength: 0.5
+    - name: "stress_dependent_vowel_quality"
+      condition: "stressed_syllable"
+      requirement: "prefer_full_vowels"
+      strength: 0.7
+  frequency_adjustments:
+    word_initial: 1.1
+    word_medial: 1.0
+    word_final: 1.2
+    after_consonant: 0.95
+    after_vowel: 1.05
+    stressed_syllable: 1.4
+    unstressed_syllable: 0.7
