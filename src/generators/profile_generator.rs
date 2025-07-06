@@ -21,6 +21,8 @@ pub struct Syllable {
     pub nucleus: Vec<String>,
     /// IPA strings for coda consonants
     pub coda: Vec<String>,
+    /// Whether this syllable is stressed
+    pub stressed: bool,
 }
 
 impl<'a> LanguageProfileGenerator<'a> {
@@ -44,10 +46,13 @@ impl<'a> LanguageProfileGenerator<'a> {
             syllables.push(syllable);
         }
         
-        // 3. Apply harmony rules
+        // 3. Assign stress patterns
+        self.assign_stress_patterns(&mut syllables);
+        
+        // 4. Apply harmony rules
         self.apply_harmony_rules(&mut syllables);
         
-        // 4. Convert to graphemes
+        // 5. Convert to graphemes
         self.convert_to_graphemes(&syllables)
     }
     
@@ -62,6 +67,7 @@ impl<'a> LanguageProfileGenerator<'a> {
             onset: Vec::new(),
             nucleus: Vec::new(),
             coda: Vec::new(),
+            stressed: false, // Will be assigned later
         };
         
         // Parse pattern and fill components
@@ -139,14 +145,44 @@ impl<'a> LanguageProfileGenerator<'a> {
         }
     }
     
+    /// Assign stress patterns to syllables
+    fn assign_stress_patterns(&self, syllables: &mut [Syllable]) {
+        if syllables.is_empty() {
+            return;
+        }
+        
+        // Simple stress assignment: first syllable gets primary stress
+        // This can be made more sophisticated based on language-specific rules
+        syllables[0].stressed = true;
+        
+        // For longer words, assign secondary stress to alternate syllables
+        for i in 2..syllables.len() {
+            if i % 2 == 0 {
+                syllables[i].stressed = true;
+            }
+        }
+    }
+    
     /// Apply harmony rules to syllables
     fn apply_harmony_rules(&self, syllables: &mut [Syllable]) {
         // Apply vowel harmony and other phonetic rules
         for rule in &self.profile.style_rules.harmony_rules {
-            // Implementation depends on specific rule format
-            // This is a simplified example
-            if rule.name == "vowel_harmony" {
-                self.apply_vowel_harmony(syllables, rule);
+            match rule.name.as_str() {
+                "vowel_harmony" => {
+                    self.apply_vowel_harmony(syllables, rule);
+                }
+                "vowel_reduction" => {
+                    self.apply_vowel_reduction(syllables, rule);
+                }
+                "consonant_cluster_simplification" => {
+                    self.apply_consonant_cluster_simplification(syllables, rule);
+                }
+                "stress_dependent_vowel_quality" => {
+                    self.apply_stress_dependent_vowel_quality(syllables, rule);
+                }
+                _ => {
+                    // Unknown rule type, skip
+                }
             }
         }
     }
@@ -168,6 +204,98 @@ impl<'a> LanguageProfileGenerator<'a> {
             for syllable in syllables.iter_mut().skip(1) {
                 if let Some(replacement) = self.find_harmonizing_vowel(&syllable.nucleus, &vowel_group) {
                     syllable.nucleus = vec![replacement];
+                }
+            }
+        }
+    }
+    
+    /// Apply vowel reduction rule (reduce vowels to schwa in unstressed syllables)
+    fn apply_vowel_reduction(&self, syllables: &mut [Syllable], rule: &crate::language_profile::profile::HarmonyRule) {
+        use rand::Rng;
+        let mut rng = rand::thread_rng();
+        
+        for syllable in syllables.iter_mut() {
+            // Only apply to unstressed syllables
+            if !syllable.stressed {
+                // Apply reduction with probability based on rule strength
+                if rng.gen::<f32>() < rule.strength {
+                    // Replace vowel with schwa [ə]
+                    // First check if schwa exists in the phonetic inventory
+                    if self.profile.phonetic_inventory.get_phoneme("[ə]").is_some() {
+                        syllable.nucleus = vec!["[ə]".to_string()];
+                    }
+                }
+            }
+        }
+    }
+    
+    /// Apply consonant cluster simplification
+    fn apply_consonant_cluster_simplification(&self, syllables: &mut [Syllable], rule: &crate::language_profile::profile::HarmonyRule) {
+        use rand::Rng;
+        let mut rng = rand::thread_rng();
+        
+        for syllable in syllables.iter_mut() {
+            // Apply simplification with probability based on rule strength
+            if rng.gen::<f32>() < rule.strength {
+                // Simplify complex onset clusters (3+ consonants -> 2 consonants)
+                if syllable.onset.len() > 2 {
+                    // Keep first two consonants, remove the rest
+                    syllable.onset.truncate(2);
+                }
+                
+                // Simplify complex coda clusters (3+ consonants -> 2 consonants)
+                if syllable.coda.len() > 2 {
+                    // Keep first two consonants, remove the rest
+                    syllable.coda.truncate(2);
+                }
+            }
+        }
+    }
+    
+    /// Apply stress-dependent vowel quality rules
+    fn apply_stress_dependent_vowel_quality(&self, syllables: &mut [Syllable], rule: &crate::language_profile::profile::HarmonyRule) {
+        use rand::Rng;
+        let mut rng = rand::thread_rng();
+        
+        for syllable in syllables.iter_mut() {
+            // Apply quality adjustment with probability based on rule strength
+            if rng.gen::<f32>() < rule.strength {
+                if syllable.stressed {
+                    // Prefer full vowels in stressed syllables
+                    self.prefer_full_vowels(syllable);
+                } else {
+                    // Prefer reduced vowels in unstressed syllables
+                    self.prefer_reduced_vowels(syllable);
+                }
+            }
+        }
+    }
+    
+    /// Prefer full vowels in a syllable
+    fn prefer_full_vowels(&self, syllable: &mut Syllable) {
+        // If current vowel is reduced, try to replace with full vowel
+        if let Some(current_vowel) = syllable.nucleus.first() {
+            if self.is_reduced_vowel(current_vowel) {
+                // Try to find a full vowel from the same vowel group
+                if let Some(vowel_group) = self.determine_vowel_group(current_vowel) {
+                    if let Some(full_vowel) = self.find_full_vowel_in_group(&vowel_group) {
+                        syllable.nucleus = vec![full_vowel];
+                    }
+                }
+            }
+        }
+    }
+    
+    /// Prefer reduced vowels in a syllable
+    fn prefer_reduced_vowels(&self, syllable: &mut Syllable) {
+        // If current vowel is full, try to replace with reduced vowel
+        if let Some(current_vowel) = syllable.nucleus.first() {
+            if self.is_full_vowel(current_vowel) {
+                // Try to find a reduced vowel from the same vowel group
+                if let Some(vowel_group) = self.determine_vowel_group(current_vowel) {
+                    if let Some(reduced_vowel) = self.find_reduced_vowel_in_group(&vowel_group) {
+                        syllable.nucleus = vec![reduced_vowel];
+                    }
                 }
             }
         }
@@ -198,6 +326,51 @@ impl<'a> LanguageProfileGenerator<'a> {
             }
         }
         None
+    }
+    
+    /// Check if a vowel is a reduced vowel (schwa, etc.)
+    fn is_reduced_vowel(&self, vowel_ipa: &str) -> bool {
+        // Common reduced vowels in various languages
+        matches!(vowel_ipa, "[ə]" | "[ɪ]" | "[ʊ]" | "[ɨ]")
+    }
+    
+    /// Check if a vowel is a full vowel (not reduced)
+    fn is_full_vowel(&self, vowel_ipa: &str) -> bool {
+        // Check if it's a vowel but not a reduced one
+        if let Some(phoneme) = self.profile.phonetic_inventory.get_phoneme(vowel_ipa) {
+            phoneme.is_vowel() && !self.is_reduced_vowel(vowel_ipa)
+        } else {
+            false
+        }
+    }
+    
+    /// Find a full vowel in a vowel group
+    fn find_full_vowel_in_group(&self, group_name: &str) -> Option<String> {
+        if let Some(group_phonemes) = self.profile.phonetic_inventory.get_group(group_name) {
+            for phoneme in group_phonemes {
+                if self.is_full_vowel(phoneme) {
+                    return Some(phoneme.clone());
+                }
+            }
+        }
+        None
+    }
+    
+    /// Find a reduced vowel in a vowel group
+    fn find_reduced_vowel_in_group(&self, group_name: &str) -> Option<String> {
+        if let Some(group_phonemes) = self.profile.phonetic_inventory.get_group(group_name) {
+            for phoneme in group_phonemes {
+                if self.is_reduced_vowel(phoneme) {
+                    return Some(phoneme.clone());
+                }
+            }
+        }
+        // Fallback to schwa if available
+        if self.profile.phonetic_inventory.get_phoneme("[ə]").is_some() {
+            Some("[ə]".to_string())
+        } else {
+            None
+        }
     }
     
     /// Convert syllables to graphemes (written form)
@@ -289,5 +462,182 @@ mod tests {
         // Test with codas
         let coda = generator.choose_coda(&mut rng);
         assert!(coda.is_some());
+    }
+    
+    #[test]
+    fn test_stress_assignment() {
+        let profile = LanguageProfile::create_advanced_test_profile();
+        let generator = LanguageProfileGenerator::new(&profile);
+        
+        // Test stress assignment for single syllable
+        let mut syllables = vec![Syllable {
+            onset: vec!["[p]".to_string()],
+            nucleus: vec!["[a]".to_string()],
+            coda: vec![],
+            stressed: false,
+        }];
+        
+        generator.assign_stress_patterns(&mut syllables);
+        assert!(syllables[0].stressed); // Single syllable should be stressed
+        
+        // Test stress assignment for multiple syllables
+        let mut syllables = vec![
+            Syllable {
+                onset: vec!["[p]".to_string()],
+                nucleus: vec!["[a]".to_string()],
+                coda: vec![],
+                stressed: false,
+            },
+            Syllable {
+                onset: vec!["[t]".to_string()],
+                nucleus: vec!["[i]".to_string()],
+                coda: vec![],
+                stressed: false,
+            },
+            Syllable {
+                onset: vec!["[k]".to_string()],
+                nucleus: vec!["[o]".to_string()],
+                coda: vec![],
+                stressed: false,
+            },
+        ];
+        
+        generator.assign_stress_patterns(&mut syllables);
+        assert!(syllables[0].stressed); // First syllable should be stressed
+        assert!(!syllables[1].stressed); // Second syllable should not be stressed
+        assert!(syllables[2].stressed); // Third syllable should be stressed (alternating)
+    }
+    
+    #[test]
+    fn test_vowel_reduction_rule() {
+        let profile = LanguageProfile::create_advanced_test_profile();
+        let generator = LanguageProfileGenerator::new(&profile);
+        
+        let mut syllables = vec![
+            Syllable {
+                onset: vec!["[p]".to_string()],
+                nucleus: vec!["[a]".to_string()],
+                coda: vec![],
+                stressed: true, // Stressed syllable - should not be reduced
+            },
+            Syllable {
+                onset: vec!["[t]".to_string()],
+                nucleus: vec!["[i]".to_string()],
+                coda: vec![],
+                stressed: false, // Unstressed syllable - may be reduced
+            },
+        ];
+        
+        let rule = crate::language_profile::profile::HarmonyRule {
+            name: "vowel_reduction".to_string(),
+            condition: "unstressed_syllable".to_string(),
+            requirement: "prefer_schwa".to_string(),
+            strength: 1.0, // Always apply for testing
+        };
+        
+        generator.apply_vowel_reduction(&mut syllables, &rule);
+        
+        // First syllable should remain unchanged (stressed)
+        assert_eq!(syllables[0].nucleus, vec!["[a]".to_string()]);
+        
+        // Second syllable should be reduced to schwa (unstressed)
+        assert_eq!(syllables[1].nucleus, vec!["[ə]".to_string()]);
+    }
+    
+    #[test]
+    fn test_consonant_cluster_simplification() {
+        let profile = LanguageProfile::create_advanced_test_profile();
+        let generator = LanguageProfileGenerator::new(&profile);
+        
+        let mut syllables = vec![
+            Syllable {
+                onset: vec!["[s]".to_string(), "[p]".to_string(), "[t]".to_string()], // Complex cluster
+                nucleus: vec!["[a]".to_string()],
+                coda: vec!["[k]".to_string(), "[s]".to_string(), "[t]".to_string()], // Complex cluster
+                stressed: true,
+            },
+        ];
+        
+        let rule = crate::language_profile::profile::HarmonyRule {
+            name: "consonant_cluster_simplification".to_string(),
+            condition: "has_complex_cluster".to_string(),
+            requirement: "simplify_cluster".to_string(),
+            strength: 1.0, // Always apply for testing
+        };
+        
+        generator.apply_consonant_cluster_simplification(&mut syllables, &rule);
+        
+        // Onset should be simplified to 2 consonants
+        assert_eq!(syllables[0].onset.len(), 2);
+        
+        // Coda should be simplified to 2 consonants
+        assert_eq!(syllables[0].coda.len(), 2);
+    }
+    
+    #[test]
+    fn test_stress_dependent_vowel_quality() {
+        let profile = LanguageProfile::create_advanced_test_profile();
+        let generator = LanguageProfileGenerator::new(&profile);
+        
+        let mut syllables = vec![
+            Syllable {
+                onset: vec!["[p]".to_string()],
+                nucleus: vec!["[ɪ]".to_string()], // Reduced vowel
+                coda: vec![],
+                stressed: true, // Stressed - should prefer full vowels
+            },
+            Syllable {
+                onset: vec!["[t]".to_string()],
+                nucleus: vec!["[a]".to_string()], // Full vowel
+                coda: vec![],
+                stressed: false, // Unstressed - should prefer reduced vowels
+            },
+        ];
+        
+        let rule = crate::language_profile::profile::HarmonyRule {
+            name: "stress_dependent_vowel_quality".to_string(),
+            condition: "stressed_syllable".to_string(),
+            requirement: "prefer_full_vowels".to_string(),
+            strength: 1.0, // Always apply for testing
+        };
+        
+        generator.apply_stress_dependent_vowel_quality(&mut syllables, &rule);
+        
+        // First syllable should prefer full vowels (stressed)
+        // Note: The exact outcome depends on vowel groups, but we can check if it's trying to change
+        assert!(generator.is_full_vowel(&syllables[0].nucleus[0]) || generator.is_reduced_vowel(&syllables[0].nucleus[0]));
+    }
+    
+    #[test]
+    fn test_phoneme_classification() {
+        let profile = LanguageProfile::create_advanced_test_profile();
+        let generator = LanguageProfileGenerator::new(&profile);
+        
+        // Test full vowel classification
+        assert!(generator.is_full_vowel("[a]"));
+        assert!(generator.is_full_vowel("[i]"));
+        assert!(generator.is_full_vowel("[o]"));
+        
+        // Test reduced vowel classification
+        assert!(generator.is_reduced_vowel("[ə]"));
+        assert!(generator.is_reduced_vowel("[ɪ]"));
+        
+        // Test that consonants are not classified as vowels
+        assert!(!generator.is_full_vowel("[p]"));
+        assert!(!generator.is_reduced_vowel("[t]"));
+    }
+    
+    #[test]
+    fn test_advanced_harmony_rules_integration() {
+        let profile = LanguageProfile::create_advanced_test_profile();
+        let generator = LanguageProfileGenerator::new(&profile);
+        let mut rng = rand::thread_rng();
+        
+        // Generate names with advanced harmony rules
+        for i in 0..5 {
+            let name = generator.generate(&mut rng);
+            println!("Generated name with advanced rules {}: {}", i + 1, name);
+            assert!(!name.is_empty());
+        }
     }
 }

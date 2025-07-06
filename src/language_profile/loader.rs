@@ -186,6 +186,131 @@ impl LanguageProfile {
             style_rules: StyleRules::default(),
         }
     }
+    
+    /// Create a test profile with advanced harmony rules support
+    pub fn create_advanced_test_profile() -> Self {
+        use crate::phonetics::phoneme::{Phoneme, PhonemeType};
+        use crate::language_profile::profile::*;
+        
+        let mut inventory = PhoneticInventory::new();
+        
+        // Add basic phonemes including schwa for vowel reduction
+        inventory.add_phoneme(Phoneme::new("[p]", PhonemeType::Consonant, "p", 0.8));
+        inventory.add_phoneme(Phoneme::new("[t]", PhonemeType::Consonant, "t", 0.9));
+        inventory.add_phoneme(Phoneme::new("[k]", PhonemeType::Consonant, "k", 0.7));
+        inventory.add_phoneme(Phoneme::new("[s]", PhonemeType::Consonant, "s", 0.6));
+        inventory.add_phoneme(Phoneme::new("[a]", PhonemeType::Vowel, "a", 0.9));
+        inventory.add_phoneme(Phoneme::new("[i]", PhonemeType::Vowel, "i", 0.8));
+        inventory.add_phoneme(Phoneme::new("[o]", PhonemeType::Vowel, "o", 0.7));
+        inventory.add_phoneme(Phoneme::new("[ə]", PhonemeType::Vowel, "e", 0.5)); // schwa
+        inventory.add_phoneme(Phoneme::new("[ɪ]", PhonemeType::Vowel, "i", 0.4)); // reduced i
+        
+        // Add phoneme groups
+        inventory.add_phoneme_group("front_vowels".to_string(), vec!["[i]".to_string(), "[ɪ]".to_string()]);
+        inventory.add_phoneme_group("back_vowels".to_string(), vec!["[o]".to_string(), "[a]".to_string()]);
+        inventory.add_phoneme_group("central_vowels".to_string(), vec!["[ə]".to_string()]);
+        
+        let mut structure = SyllableStructure::new();
+        structure.add_pattern("CV", 0.4);
+        structure.add_pattern("CVC", 0.3);
+        structure.add_pattern("CCVC", 0.2); // Complex cluster pattern
+        structure.add_pattern("CVCC", 0.1); // Complex cluster pattern
+        
+        // Add onsets (including complex clusters)
+        structure.onsets.push(PhonemeCluster {
+            phonemes: vec!["[p]".to_string()],
+            frequency: 0.8,
+        });
+        structure.onsets.push(PhonemeCluster {
+            phonemes: vec!["[t]".to_string()],
+            frequency: 0.9,
+        });
+        structure.onsets.push(PhonemeCluster {
+            phonemes: vec!["[k]".to_string()],
+            frequency: 0.7,
+        });
+        structure.onsets.push(PhonemeCluster {
+            phonemes: vec!["[s]".to_string(), "[t]".to_string()],
+            frequency: 0.5,
+        });
+        structure.onsets.push(PhonemeCluster {
+            phonemes: vec!["[s]".to_string(), "[p]".to_string(), "[t]".to_string()], // Complex cluster
+            frequency: 0.2,
+        });
+        
+        // Add nuclei
+        structure.nuclei.push(PhonemeCluster {
+            phonemes: vec!["[a]".to_string()],
+            frequency: 0.9,
+        });
+        structure.nuclei.push(PhonemeCluster {
+            phonemes: vec!["[i]".to_string()],
+            frequency: 0.8,
+        });
+        structure.nuclei.push(PhonemeCluster {
+            phonemes: vec!["[o]".to_string()],
+            frequency: 0.7,
+        });
+        structure.nuclei.push(PhonemeCluster {
+            phonemes: vec!["[ə]".to_string()],
+            frequency: 0.5,
+        });
+        structure.nuclei.push(PhonemeCluster {
+            phonemes: vec!["[ɪ]".to_string()],
+            frequency: 0.4,
+        });
+        
+        // Add codas (including complex clusters)
+        structure.codas.push(PhonemeCluster {
+            phonemes: vec![], // Empty coda
+            frequency: 0.4,
+        });
+        structure.codas.push(PhonemeCluster {
+            phonemes: vec!["[t]".to_string()],
+            frequency: 0.3,
+        });
+        structure.codas.push(PhonemeCluster {
+            phonemes: vec!["[k]".to_string()],
+            frequency: 0.2,
+        });
+        structure.codas.push(PhonemeCluster {
+            phonemes: vec!["[s]".to_string(), "[t]".to_string()],
+            frequency: 0.1,
+        });
+        structure.codas.push(PhonemeCluster {
+            phonemes: vec!["[k]".to_string(), "[s]".to_string(), "[t]".to_string()], // Complex cluster
+            frequency: 0.05,
+        });
+        
+        // Add harmony rules
+        let mut style_rules = StyleRules::default();
+        style_rules.harmony_rules.push(HarmonyRule {
+            name: "vowel_reduction".to_string(),
+            condition: "unstressed_syllable".to_string(),
+            requirement: "prefer_schwa".to_string(),
+            strength: 0.6,
+        });
+        style_rules.harmony_rules.push(HarmonyRule {
+            name: "consonant_cluster_simplification".to_string(),
+            condition: "has_complex_cluster".to_string(),
+            requirement: "simplify_cluster".to_string(),
+            strength: 0.5,
+        });
+        style_rules.harmony_rules.push(HarmonyRule {
+            name: "stress_dependent_vowel_quality".to_string(),
+            condition: "stressed_syllable".to_string(),
+            requirement: "prefer_full_vowels".to_string(),
+            strength: 0.7,
+        });
+        
+        LanguageProfile {
+            name: "Advanced Test Language".to_string(),
+            phonetic_inventory: inventory,
+            syllable_structure: structure,
+            word_composition: WordComposition::default(),
+            style_rules,
+        }
+    }
 }
 
 #[cfg(test)]

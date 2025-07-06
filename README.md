@@ -10,6 +10,7 @@ A flexible and extensible name generation system for Rust, using advanced phonet
 - **YAML-based language definitions** for easy customization
 - **Syllable structure modeling** (onset, nucleus, coda)
 - **Vowel harmony and phonetic rules** for realistic pronunciation
+- **Advanced harmony rules** including vowel reduction, consonant cluster simplification, and stress-dependent vowel quality
 - **Morphological composition** with prefixes, suffixes, and roots
 - **Frequency-based generation** for natural-sounding names
 - **Forbidden transition rules** to prevent unpronounceable combinations
@@ -19,7 +20,7 @@ A flexible and extensible name generation system for Rust, using advanced phonet
 - **Type Safety**: Strong typing prevents misuse and provides clear APIs
 - **Extensibility**: Easy to add new languages and sound profiles
 - **Phonetic Accuracy**: IPA-based phoneme system for realistic pronunciation
-- **Configurable**: Adjustable syllable patterns, frequency weights, and harmony rules
+- **Configurable**: Adjustable syllable patterns, frequency weights, and harmony rules (including advanced linguistic features like vowel reduction and stress-dependent vowel quality)
 - **High Performance**: Optimized for fast generation of large name sets
 
 ## Quick Start
@@ -244,6 +245,18 @@ style_rules:
     - name: "front_vowel_harmony"
       condition: "contains_front_vowel"
       requirement: "prefer_front_vowels"
+      strength: 0.7
+    - name: "vowel_reduction"
+      condition: "unstressed_syllable"
+      requirement: "prefer_schwa"
+      strength: 0.6
+    - name: "consonant_cluster_simplification"
+      condition: "has_complex_cluster"
+      requirement: "simplify_cluster"
+      strength: 0.5
+    - name: "stress_dependent_vowel_quality"
+      condition: "stressed_syllable"
+      requirement: "prefer_full_vowels"
       strength: 0.7
   frequency_adjustments:
     word_initial: 1.2
