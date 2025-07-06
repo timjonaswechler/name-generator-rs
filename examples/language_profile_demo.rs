@@ -1,11 +1,10 @@
 //! LanguageProfile system demonstration
 //!
-//! This example demonstrates the new LanguageProfile system alongside
-//! the existing pattern-based system, showing backward compatibility.
+//! This example demonstrates the LanguageProfile system and its features
+//! for phonetically accurate name generation.
 
 use name_generator::core::Name;
 use name_generator::categories::profile_examples::*;
-use name_generator::categories::examples::*;
 use name_generator::language_profile::profile::LanguageProfile;
 use name_generator::generators::profile_generator::LanguageProfileGenerator;
 use rand::thread_rng;
@@ -42,20 +41,10 @@ fn main() {
         println!("   {}: {}", i + 1, name);
     }
     
-    println!("\n3. Backward Compatibility - Existing Pattern System:");
-    
-    // Show that existing pattern-based system still works
-    println!("Standard star names (pattern-based):");
-    let standard_gen = Name::<StandardStar>::new();
-    for i in 0..5 {
-        let name = standard_gen.generate(&mut rng);
-        println!("   {}: {}", i + 1, name);
-    }
-    
-    println!("\n4. Profile Analysis:");
+    println!("\n3. Profile Analysis:");
     analyze_profile(&test_profile);
     
-    println!("\n=== System Integration Complete ===");
+    println!("\n=== LanguageProfile Demo Complete ===");
 }
 
 fn analyze_profile(profile: &LanguageProfile) {

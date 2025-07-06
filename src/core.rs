@@ -1,63 +1,15 @@
 //! Core traits and types for the name generator system.
 //!
-//! This module provides the fundamental building blocks for the macro-based name generation system,
-//! following the same pattern as the physics units system.
+//! This module provides the fundamental building blocks for the language profile-based name generation system.
 
-use super::symbols::SYMBOL_MAP;
-use crate::pattern::Pattern;
-use crate::phonetic_rules::PhoneticRules;
 use crate::language_profile::profile::LanguageProfile;
 use crate::generators::profile_generator::LanguageProfileGenerator;
 use rand::Rng;
-use std::collections::HashMap;
 
-/// Base trait for name pattern categories
+/// Language profile category trait
 ///
-/// All name generator categories must implement this trait to provide
-/// their specific naming patterns and generation logic. Categories can customize
-/// their sound profile through custom symbol maps and phonetic rules.
-pub trait NameCategory: Default {
-    type Variant;
-
-    /// Get the pattern string for this category variant
-    fn pattern(&self) -> &'static str;
-
-    /// Get the symbol map for this category
-    ///
-    /// Returns a reference to the symbol map that defines available sounds.
-    /// Default implementation uses the standard symbol map, but categories
-    /// can override this to provide specialized sound sets.
-    fn symbol_map(&self) -> &HashMap<&'static str, Vec<&'static str>> {
-        &*SYMBOL_MAP
-    }
-
-    /// Get phonetic rules for this category
-    ///
-    /// Returns phonetic rules that will be applied during name generation
-    /// to adjust probabilities based on context and sound compatibility.
-    /// Default implementation returns None (no special rules).
-    fn phonetic_rules(&self) -> Option<&PhoneticRules> {
-        None
-    }
-
-    /// Get a parsed Pattern for this category variant
-    fn get_pattern(&self) -> Pattern {
-        Pattern::parse(self.pattern(), self.symbol_map(), false)
-            .expect("Invalid pattern in category")
-    }
-
-    /// Generate a name using this category's pattern and rules
-    fn generate(&self, rng: &mut impl Rng) -> String {
-        let mut context = String::new();
-        self.get_pattern()
-            .generate_with_context(rng, &mut context, self.phonetic_rules())
-    }
-}
-
-/// Extended trait for language profile categories
-///
-/// This trait extends the name generation system to support phonetically-grounded
-/// language profiles while maintaining backward compatibility.
+/// This trait defines the interface for language profile-based name generation,
+/// providing phonetically-grounded name generation capabilities.
 pub trait LanguageProfileCategory: Default {
     /// Get the language profile for this category
     fn language_profile(&self) -> &LanguageProfile;
@@ -70,44 +22,28 @@ pub trait LanguageProfileCategory: Default {
     }
 }
 
-/// Bridge trait to maintain compatibility
-///
-/// This implementation allows LanguageProfileCategory types to be used
-/// as NameCategory types for backward compatibility.
-impl<T: LanguageProfileCategory> NameCategory for T {
-    type Variant = ();
-    
-    fn pattern(&self) -> &'static str {
-        // Convert profile to pattern string for compatibility
-        // This is a simplified representation
-        "<onset><nucleus><coda>"
-    }
-    
-    fn generate(&self, rng: &mut impl Rng) -> String {
-        self.generate_with_profile(rng)
-    }
-}
-
-/// Main name type that works with any category, similar to how Quantity<Unit> works
+/// Main name type that works with language profile categories
 ///
 /// This is the core type that provides a consistent API for name generation
-/// across all categories, following the same design pattern as the units system.
+/// using language profiles.
 ///
 /// # Examples
 ///
 /// ```rust
 /// use name_generator::core::Name;
+/// use name_generator::categories::profile_examples::GermanLanguageProfile;
 /// use rand::thread_rng;
 ///
-/// // For language profile categories, this would use the profile-based generation
-/// // For traditional categories, this would use the pattern-based generation
+/// let mut rng = thread_rng();
+/// let generator = Name::<GermanLanguageProfile>::new();
+/// let name = generator.generate(&mut rng);
 /// ```
 #[derive(Debug, Clone)]
-pub struct Name<T: NameCategory> {
+pub struct Name<T: LanguageProfileCategory> {
     category: T,
 }
 
-impl<T: NameCategory> Name<T> {
+impl<T: LanguageProfileCategory> Name<T> {
     /// Create a new name generator for a specific category
     pub fn new() -> Self {
         Self {
@@ -120,9 +56,9 @@ impl<T: NameCategory> Name<T> {
         Self { category }
     }
 
-    /// Generate a name using this category's pattern
+    /// Generate a name using this category's language profile
     pub fn generate(&self, rng: &mut impl Rng) -> String {
-        self.category.generate(rng)
+        self.category.generate_with_profile(rng)
     }
 
     /// Get the category this name generator uses
@@ -131,13 +67,8 @@ impl<T: NameCategory> Name<T> {
     }
 }
 
-impl<T: NameCategory> Default for Name<T> {
+impl<T: LanguageProfileCategory> Default for Name<T> {
     fn default() -> Self {
         Self::new()
     }
 }
-
-// For backward compatibility, keep the old NameGenerator type as an alias
-/// Legacy name generator type - use `Name<T>` instead
-#[deprecated(note = "Use Name<T> instead for consistency with units system")]
-pub type NameGenerator<T> = Name<T>;

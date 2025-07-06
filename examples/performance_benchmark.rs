@@ -1,19 +1,16 @@
 //! Performance benchmark for LanguageProfile system
 //!
-//! This example measures generation speed, memory usage, and compares
-//! the LanguageProfile system with the traditional pattern-based approach.
+//! This example measures generation speed and memory usage for
+//! the LanguageProfile-based name generation system.
 
 use name_generator::{
     core::Name,
-    categories::{
-        examples::StandardStar,
-        profile_examples::{GermanLanguageProfile, EnglishLanguageProfile},
-    },
+    categories::profile_examples::{GermanLanguageProfile, EnglishLanguageProfile},
     language_profile::profile::LanguageProfile,
     generators::profile_generator::LanguageProfileGenerator,
 };
 use rand::thread_rng;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 fn main() {
     println!("=== LanguageProfile Performance Benchmark ===\n");
@@ -26,26 +23,8 @@ fn main() {
     for &count in &test_counts {
         println!("--- Performance Test: {} names ---", count);
         
-        // 1. Pattern-based system benchmark
-        println!("1. Pattern-based system:");
-        let start = Instant::now();
-        let mut pattern_names = Vec::new();
-        
-        for _ in 0..count {
-            let name = Name::<StandardStar>::new().generate(&mut rng);
-            pattern_names.push(name);
-        }
-        
-        let pattern_duration = start.elapsed();
-        let pattern_speed = count as f64 / pattern_duration.as_secs_f64();
-        
-        println!("   Time: {:?}", pattern_duration);
-        println!("   Speed: {:.0} names/second", pattern_speed);
-        println!("   Avg length: {:.1} chars", 
-                 pattern_names.iter().map(|n| n.len()).sum::<usize>() as f64 / count as f64);
-        
-        // 2. German LanguageProfile benchmark
-        println!("2. German LanguageProfile:");
+        // 1. German LanguageProfile benchmark
+        println!("1. German LanguageProfile:");
         let start = Instant::now();
         let mut german_names = Vec::new();
         
@@ -62,8 +41,8 @@ fn main() {
         println!("   Avg length: {:.1} chars", 
                  german_names.iter().map(|n| n.len()).sum::<usize>() as f64 / count as f64);
         
-        // 3. English LanguageProfile benchmark
-        println!("3. English LanguageProfile:");
+        // 2. English LanguageProfile benchmark
+        println!("2. English LanguageProfile:");
         let start = Instant::now();
         let mut english_names = Vec::new();
         
@@ -80,8 +59,8 @@ fn main() {
         println!("   Avg length: {:.1} chars", 
                  english_names.iter().map(|n| n.len()).sum::<usize>() as f64 / count as f64);
         
-        // 4. Direct profile usage benchmark
-        println!("4. Direct Profile Usage:");
+        // 3. Direct profile usage benchmark
+        println!("3. Direct Profile Usage:");
         let german_profile = LanguageProfile::load_from_file("languages/german.yml")
             .expect("Failed to load German profile");
         let generator = LanguageProfileGenerator::new(&german_profile);
@@ -104,10 +83,9 @@ fn main() {
         
         // Performance comparison
         println!("\n   Performance Comparison:");
-        println!("   Pattern-based:    {:.0} names/s (baseline)", pattern_speed);
-        println!("   German Profile:   {:.0} names/s ({:.1}x)", german_speed, german_speed / pattern_speed);
-        println!("   English Profile:  {:.0} names/s ({:.1}x)", english_speed, english_speed / pattern_speed);
-        println!("   Direct Profile:   {:.0} names/s ({:.1}x)", direct_speed, direct_speed / pattern_speed);
+        println!("   German Profile:   {:.0} names/s", german_speed);
+        println!("   English Profile:  {:.0} names/s", english_speed);
+        println!("   Direct Profile:   {:.0} names/s", direct_speed);
         
         println!();
     }
@@ -157,12 +135,6 @@ fn main() {
     println!("\nEnglish names:");
     for i in 1..=10 {
         let name = Name::<EnglishLanguageProfile>::new().generate(&mut rng);
-        println!("  {}: {}", i, name);
-    }
-    
-    println!("\nPattern-based names:");
-    for i in 1..=10 {
-        let name = Name::<StandardStar>::new().generate(&mut rng);
         println!("  {}: {}", i, name);
     }
     
