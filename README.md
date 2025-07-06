@@ -1,53 +1,41 @@
 # Name Generator
 
-A flexible and extensible name generation system for Rust, supporting both traditional pattern-based generation and advanced phonetically-grounded language profiles.
+A flexible and extensible name generation system for Rust, using advanced phonetically-grounded language profiles.
 
 ## Features
 
-### Two Generation Systems
+### LanguageProfile System
 
-1. **Pattern-Based Generation** (Traditional)
-   - Simple pattern strings like `"<s><v><c>"`
-   - Custom symbol maps for different sound sets
-   - Phonetic rules for sound compatibility
-   - Fast and lightweight
-
-2. **LanguageProfile System** (New)
-   - Phonetically-grounded language profiles using IPA notation
-   - YAML-based language definitions
-   - Syllable structure modeling (onset, nucleus, coda)
-   - Vowel harmony and phonetic rules
-   - More linguistically accurate
+- **Phonetically-grounded language profiles** using IPA notation
+- **YAML-based language definitions** for easy customization
+- **Syllable structure modeling** (onset, nucleus, coda)
+- **Vowel harmony and phonetic rules** for realistic pronunciation
+- **Morphological composition** with prefixes, suffixes, and roots
+- **Frequency-based generation** for natural-sounding names
+- **Forbidden transition rules** to prevent unpronounceable combinations
 
 ### Key Features
 
-- **Backward Compatibility**: Existing pattern-based code continues to work unchanged
 - **Type Safety**: Strong typing prevents misuse and provides clear APIs
 - **Extensibility**: Easy to add new languages and sound profiles
 - **Phonetic Accuracy**: IPA-based phoneme system for realistic pronunciation
 - **Configurable**: Adjustable syllable patterns, frequency weights, and harmony rules
-- **High Performance**: Profile-based generation is 1.8x faster than pattern-based
+- **High Performance**: Optimized for fast generation of large name sets
 
 ## Quick Start
-
-### Pattern-Based Generation
-
-```rust
-use name_generator::core::Name;
-use name_generator::categories::examples::StandardStar;
-use rand::thread_rng;
-
-let mut rng = thread_rng();
-let generator = Name::<StandardStar>::new();
-let name = generator.generate(&mut rng);
-println!("Generated name: {}", name);
-```
 
 ### LanguageProfile Generation
 
 ```rust
 use name_generator::core::Name;
 use name_generator::categories::profile_examples::GermanLanguageProfile;
+use rand::thread_rng;
+
+let mut rng = thread_rng();
+let generator = Name::<GermanLanguageProfile>::new();
+let name = generator.generate(&mut rng);
+println!("German name: {}", name);
+```
 use rand::thread_rng;
 
 let mut rng = thread_rng();
@@ -157,12 +145,11 @@ Input: LanguageProfile
 
 Performance testing shows the LanguageProfile system is highly efficient:
 
-| System | Speed | Relative Performance |
-|--------|-------|---------------------|
-| Pattern-based | ~50,000 names/second | 1.0x (baseline) |
-| German Profile | ~90,000 names/second | 1.8x faster |
-| English Profile | ~78,000 names/second | 1.6x faster |
-| Direct Profile | ~90,000 names/second | 1.8x faster |
+| System | Speed |
+|--------|-------|
+| German Profile | ~90,000 names/second |
+| English Profile | ~78,000 names/second |
+| Direct Profile | ~90,000 names/second |
 
 ### Memory Usage
 
@@ -304,19 +291,10 @@ Run the comprehensive test suite:
 cargo test
 ```
 
-All 32+ tests pass, ensuring system reliability and backward compatibility.
-
-## Migration Guide
-
-Existing pattern-based code requires no changes. To use LanguageProfiles:
-
-1. Import the new category types from `categories::profile_examples`
-2. Use the same `Name<T>` API - the system automatically detects profile categories
-3. Optionally use direct profile loading for advanced use cases
+All tests pass, ensuring system reliability and correctness.
 
 ## Dependencies
 
 - `rand`: Random number generation
 - `serde` + `serde_yaml`: Profile serialization
 - `lazy_static`: Static data management
-- `paste`: Macro utilities
