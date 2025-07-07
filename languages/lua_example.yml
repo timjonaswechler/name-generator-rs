@@ -1,0 +1,244 @@
+# Example Language Profile with Lua Scripting
+# This demonstrates the new Lua scripting capabilities for dynamic harmony rules
+
+name: "Lua Example"
+phonetic_inventory:
+  phonemes:
+    # Consonants
+    - ipa: "[p]"
+      phoneme_type: "Consonant"
+      grapheme: "p"
+      frequency: 0.8
+    - ipa: "[b]"
+      phoneme_type: "Consonant"
+      grapheme: "b"
+      frequency: 0.7
+    - ipa: "[t]"
+      phoneme_type: "Consonant"
+      grapheme: "t"
+      frequency: 0.9
+    - ipa: "[d]"
+      phoneme_type: "Consonant"
+      grapheme: "d"
+      frequency: 0.8
+    - ipa: "[k]"
+      phoneme_type: "Consonant"
+      grapheme: "k"
+      frequency: 0.7
+    - ipa: "[g]"
+      phoneme_type: "Consonant"
+      grapheme: "g"
+      frequency: 0.6
+    - ipa: "[m]"
+      phoneme_type: "Consonant"
+      grapheme: "m"
+      frequency: 0.8
+    - ipa: "[n]"
+      phoneme_type: "Consonant"
+      grapheme: "n"
+      frequency: 0.9
+    - ipa: "[s]"
+      phoneme_type: "Consonant"
+      grapheme: "s"
+      frequency: 0.8
+    - ipa: "[f]"
+      phoneme_type: "Consonant"
+      grapheme: "f"
+      frequency: 0.7
+    - ipa: "[l]"
+      phoneme_type: "Consonant"
+      grapheme: "l"
+      frequency: 0.8
+    - ipa: "[r]"
+      phoneme_type: "Consonant"
+      grapheme: "r"
+      frequency: 0.7
+    
+    # Vowels
+    - ipa: "[a]"
+      phoneme_type: "Vowel"
+      grapheme: "a"
+      frequency: 0.9
+    - ipa: "[e]"
+      phoneme_type: "Vowel"
+      grapheme: "e"
+      frequency: 0.8
+    - ipa: "[i]"
+      phoneme_type: "Vowel"
+      grapheme: "i"
+      frequency: 0.8
+    - ipa: "[o]"
+      phoneme_type: "Vowel"
+      grapheme: "o"
+      frequency: 0.7
+    - ipa: "[u]"
+      phoneme_type: "Vowel"
+      grapheme: "u"
+      frequency: 0.7
+    - ipa: "[ə]"
+      phoneme_type: "Vowel"
+      grapheme: "e"
+      frequency: 0.6
+
+  phoneme_groups:
+    front_vowels: ["[i]", "[e]"]
+    back_vowels: ["[u]", "[o]"]
+    central_vowels: ["[a]", "[ə]"]
+    stops: ["[p]", "[b]", "[t]", "[d]", "[k]", "[g]"]
+    nasals: ["[m]", "[n]"]
+    fricatives: ["[s]", "[f]"]
+    liquids: ["[l]", "[r]"]
+
+syllable_structure:
+  patterns:
+    - pattern: "CV"
+      frequency: 0.4
+    - pattern: "CVC"
+      frequency: 0.3
+    - pattern: "V"
+      frequency: 0.2
+    - pattern: "VC"
+      frequency: 0.1
+
+  onsets:
+    - phonemes: ["[p]"]
+      frequency: 0.2
+    - phonemes: ["[t]"]
+      frequency: 0.2
+    - phonemes: ["[k]"]
+      frequency: 0.2
+    - phonemes: ["[s]"]
+      frequency: 0.1
+    - phonemes: ["[f]"]
+      frequency: 0.1
+    - phonemes: ["[m]"]
+      frequency: 0.1
+    - phonemes: ["[n]"]
+      frequency: 0.1
+
+  nuclei:
+    - phonemes: ["[a]"]
+      frequency: 0.3
+    - phonemes: ["[e]"]
+      frequency: 0.2
+    - phonemes: ["[i]"]
+      frequency: 0.2
+    - phonemes: ["[o]"]
+      frequency: 0.15
+    - phonemes: ["[u]"]
+      frequency: 0.15
+
+  codas:
+    - phonemes: ["[n]"]
+      frequency: 0.3
+    - phonemes: ["[m]"]
+      frequency: 0.2
+    - phonemes: ["[t]"]
+      frequency: 0.2
+    - phonemes: ["[s]"]
+      frequency: 0.15
+    - phonemes: ["[k]"]
+      frequency: 0.15
+
+word_composition:
+  min_syllables: 2
+  max_syllables: 4
+  prefixes: []
+  suffixes: []
+  forbidden_transitions: []
+
+style_rules:
+  harmony_rules:
+    # Traditional hardcoded rule for backward compatibility
+    - name: "vowel_harmony"
+      condition: "front_back_vowel_context"
+      requirement: "harmonize_vowels"
+      strength: 0.8
+    
+    # New Lua-based vowel reduction rule
+    - name: "vowel_reduction"
+      condition: "unstressed_syllable"
+      script: |
+        function apply_rule(syllables, context)
+          -- Apply vowel reduction: reduce vowels in non-initial syllables to schwa
+          for i = 2, #syllables do
+            local syllable = syllables[i]
+            local nucleus = syllable:get_nucleus()
+            
+            if #nucleus > 0 and is_vowel(nucleus[1]) then
+              -- Replace with schwa unless it's already schwa
+              if nucleus[1] ~= context:get_schwa() then
+                syllable:set_nucleus({context:get_schwa()})
+              end
+            end
+          end
+        end
+      strength: 0.7
+    
+    # Lua-based consonant cluster simplification
+    - name: "cluster_simplification"
+      condition: "complex_cluster"
+      script: |
+        function apply_rule(syllables, context)
+          -- Simplify consonant clusters in coda position
+          for i = 1, #syllables do
+            local syllable = syllables[i]
+            local coda = syllable:get_coda()
+            
+            -- If coda has more than one consonant, keep only the first
+            if #coda > 1 then
+              syllable:set_coda({coda[1]})
+            end
+          end
+        end
+      strength: 0.6
+
+    # Lua-based vowel harmony rule
+    - name: "front_back_harmony"
+      condition: "vowel_harmony_context"
+      script: |
+        function apply_rule(syllables, context)
+          -- Apply front-back vowel harmony
+          if #syllables == 0 then return end
+          
+          local first_nucleus = syllables[1]:get_nucleus()
+          if #first_nucleus == 0 then return end
+          
+          local first_vowel = first_nucleus[1]
+          local is_front = is_front_vowel(first_vowel)
+          
+          -- Apply harmony to subsequent syllables
+          for i = 2, #syllables do
+            local syllable = syllables[i]
+            local nucleus = syllable:get_nucleus()
+            
+            if #nucleus > 0 and is_vowel(nucleus[1]) then
+              local current_vowel = nucleus[1]
+              
+              -- If current vowel doesn't match the harmony, replace it
+              if is_front and not is_front_vowel(current_vowel) then
+                -- Replace with front vowel
+                if current_vowel == "[u]" then
+                  syllable:set_nucleus({"[i]"})
+                elseif current_vowel == "[o]" then
+                  syllable:set_nucleus({"[e]"})
+                elseif current_vowel == "[a]" then
+                  syllable:set_nucleus({"[e]"})
+                end
+              elseif not is_front and is_front_vowel(current_vowel) then
+                -- Replace with back vowel
+                if current_vowel == "[i]" then
+                  syllable:set_nucleus({"[u]"})
+                elseif current_vowel == "[e]" then
+                  syllable:set_nucleus({"[o]"})
+                end
+              end
+            end
+          end
+        end
+      strength: 0.9
+
+  frequency_adjustments:
+    word_initial: 1.1
+    word_medial: 1.0
+    word_final: 1.2
