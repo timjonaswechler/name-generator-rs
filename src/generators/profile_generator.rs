@@ -150,7 +150,7 @@ impl<'a> LanguageProfileGenerator<'a> {
             // Check if rule has a Lua script
             if let Some(script) = &rule.script {
                 // Use Lua rule engine if available
-                if let Some(ref lua_engine) = self.lua_engine {
+                if let Some(ref _lua_engine) = self.lua_engine {
                     // Create a mutable copy of the engine for script loading
                     let mut engine_copy = match LuaRuleEngine::new() {
                         Ok(engine) => engine,

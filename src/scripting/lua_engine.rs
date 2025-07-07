@@ -193,7 +193,6 @@ impl LuaRuleEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::generators::profile_generator::Syllable;
     
     #[test]
     fn test_lua_engine_creation() {
