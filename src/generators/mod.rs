@@ -4,5 +4,7 @@
 //! phonetically-grounded names.
 
 pub mod profile_generator;
+pub mod lua_profile_generator;
 
 pub use profile_generator::*;
+pub use lua_profile_generator::*;

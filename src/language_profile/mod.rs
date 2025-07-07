@@ -5,5 +5,9 @@
 
 pub mod profile;
 pub mod loader;
+pub mod lua_profile;
+pub mod lua_loader;
 
 pub use profile::*;
+pub use lua_profile::*;
+pub use lua_loader::*;
