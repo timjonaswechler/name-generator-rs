@@ -21,3 +21,4 @@ pub mod core;
 pub mod phonetics;
 pub mod language_profile;
 pub mod generators;
+pub mod scripting;

@@ -4,12 +4,15 @@
 //! to create phonetically-grounded names.
 
 use crate::language_profile::profile::LanguageProfile;
+use crate::scripting::{LuaRuleEngine, RuleContext};
 use rand::Rng;
 use rand::distributions::{Distribution, WeightedIndex};
+use std::collections::HashMap;
 
 /// Main generator that works with language profiles
 pub struct LanguageProfileGenerator<'a> {
     profile: &'a LanguageProfile,
+    lua_engine: Option<LuaRuleEngine>,
 }
 
 /// Represents a generated syllable
@@ -26,7 +29,8 @@ pub struct Syllable {
 impl<'a> LanguageProfileGenerator<'a> {
     /// Create a new generator with a language profile
     pub fn new(profile: &'a LanguageProfile) -> Self {
-        Self { profile }
+        let lua_engine = LuaRuleEngine::new().ok();
+        Self { profile, lua_engine }
     }
     
     /// Generate a name using the language profile
@@ -143,10 +147,33 @@ impl<'a> LanguageProfileGenerator<'a> {
     fn apply_harmony_rules(&self, syllables: &mut [Syllable]) {
         // Apply vowel harmony and other phonetic rules
         for rule in &self.profile.style_rules.harmony_rules {
-            // Implementation depends on specific rule format
-            // This is a simplified example
-            if rule.name == "vowel_harmony" {
-                self.apply_vowel_harmony(syllables, rule);
+            // Check if rule has a Lua script
+            if let Some(script) = &rule.script {
+                // Use Lua rule engine if available
+                if let Some(ref _lua_engine) = self.lua_engine {
+                    // Create a mutable copy of the engine for script loading
+                    let mut engine_copy = match LuaRuleEngine::new() {
+                        Ok(engine) => engine,
+                        Err(_) => continue, // Skip this rule if engine creation fails
+                    };
+                    
+                    // Load the script
+                    if engine_copy.load_script(script).is_ok() {
+                        // Create rule context
+                        let context = RuleContext {
+                            schwa: "[ə]".to_string(),
+                            language_features: HashMap::new(),
+                        };
+                        
+                        // Apply the Lua rule (ignore errors for now)
+                        let _ = engine_copy.apply_rule(syllables, &context);
+                    }
+                }
+            } else {
+                // Fall back to hardcoded rules for backward compatibility
+                if rule.name == "vowel_harmony" {
+                    self.apply_vowel_harmony(syllables, rule);
+                }
             }
         }
     }

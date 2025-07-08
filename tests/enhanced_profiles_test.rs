@@ -121,7 +121,9 @@ fn test_harmony_rule_structure() {
     for rule in harmony_rules {
         assert!(!rule.name.is_empty());
         assert!(!rule.condition.is_empty());
-        assert!(!rule.requirement.is_empty());
+        if let Some(requirement) = &rule.requirement {
+            assert!(!requirement.is_empty());
+        }
         assert!(rule.strength >= 0.0 && rule.strength <= 1.0);
     }
 }

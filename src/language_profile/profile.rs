@@ -116,7 +116,9 @@ pub struct HarmonyRule {
     /// Condition for applying the rule
     pub condition: String,
     /// Required action when condition is met
-    pub requirement: String,
+    pub requirement: Option<String>, // Made optional for backward compatibility
+    /// Lua script for custom rule logic
+    pub script: Option<String>,
     /// Strength of the rule (0.0 - 1.0)
     pub strength: f32,
 }
