@@ -1,12 +1,12 @@
 -- Common utilities for Lua language profiles
 -- This module provides shared functions and utilities for language profile creation
 
-common = {}
+local common = {}
 
 -- Generate syllable patterns from components and lengths
 function common.generate_patterns(components, lengths)
     local patterns = {}
-    
+
     for _, length in ipairs(lengths) do
         -- Generate all combinations of components with given length
         local function generate_combinations(components, length, current, all_combinations)
@@ -14,15 +14,15 @@ function common.generate_patterns(components, lengths)
                 table.insert(all_combinations, current)
                 return
             end
-            
+
             for _, component in ipairs(components) do
                 generate_combinations(components, length - 1, current .. component, all_combinations)
             end
         end
-        
+
         local combinations = {}
         generate_combinations(components, length, "", combinations)
-        
+
         for _, pattern in ipairs(combinations) do
             table.insert(patterns, {
                 pattern = pattern,
@@ -30,7 +30,7 @@ function common.generate_patterns(components, lengths)
             })
         end
     end
-    
+
     return patterns
 end
 
@@ -38,7 +38,7 @@ end
 function common.calculate_pattern_frequency(pattern)
     local base_frequency = 1.0
     local length = string.len(pattern)
-    
+
     -- Simple patterns are more common
     if length <= 2 then
         return base_frequency * 0.8
@@ -74,15 +74,15 @@ function common.apply_vowel_harmony(syllables, front_vowels, back_vowels)
     if #syllables == 0 then
         return
     end
-    
+
     local first_syllable = syllables[1]
     if #first_syllable.nucleus == 0 then
         return
     end
-    
+
     local first_vowel = first_syllable.nucleus[1]
     local is_front = false
-    
+
     -- Check if first vowel is front
     for _, vowel in ipairs(front_vowels) do
         if first_vowel == vowel then
@@ -90,12 +90,12 @@ function common.apply_vowel_harmony(syllables, front_vowels, back_vowels)
             break
         end
     end
-    
+
     -- Apply harmony to subsequent syllables
     for i = 2, #syllables do
         if #syllables[i].nucleus > 0 then
             local current_vowel = syllables[i].nucleus[1]
-            
+
             if is_front then
                 -- Convert back vowels to front
                 for j, back_vowel in ipairs(back_vowels) do
@@ -124,7 +124,7 @@ end
 -- Apply vowel reduction in unstressed syllables
 function common.apply_vowel_reduction(syllables, schwa, reduction_strength)
     reduction_strength = reduction_strength or 0.8
-    
+
     for i, syllable in ipairs(syllables) do
         if not syllable.stressed and #syllable.nucleus > 0 then
             -- Reduce vowel to schwa with given probability
@@ -138,7 +138,7 @@ end
 -- Apply consonant cluster simplification
 function common.simplify_consonant_clusters(syllables, max_cluster_size)
     max_cluster_size = max_cluster_size or 2
-    
+
     for i, syllable in ipairs(syllables) do
         -- Simplify onset clusters
         if #syllable.onset > max_cluster_size then
@@ -148,7 +148,7 @@ function common.simplify_consonant_clusters(syllables, max_cluster_size)
             end
             syllable.onset = new_onset
         end
-        
+
         -- Simplify coda clusters
         if #syllable.coda > max_cluster_size then
             local new_coda = {}
@@ -187,7 +187,7 @@ end
 function common.print_table(t, indent)
     indent = indent or 0
     local prefix = string.rep("  ", indent)
-    
+
     for key, value in pairs(t) do
         if type(value) == "table" then
             print(prefix .. key .. ":")

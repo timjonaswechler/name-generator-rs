@@ -1,23 +1,12 @@
-//! Name generation system for language profiles.
+//! Name Generator Library - Restructured Architecture
 //!
-//! This module provides a language profile-based name generation system that creates
-//! phonetically accurate names using sophisticated linguistic rules.
-//!
-//! # Examples
-//!
-//! ```rust
-//! use name_generator::core::Name;
-//! use name_generator::categories::profile_examples::GermanLanguageProfile;
-//! use rand::thread_rng;
-//!
-//! let mut rng = thread_rng();
-//! let generator = Name::<GermanLanguageProfile>::new();
-//! let name = generator.generate(&mut rng);
-//! ```
+//! Linguistically accurate name generation with modular, maintainable structure.
+//! Replaces the old monolithic syllable_engine with clear domain separation.
 
-// Public modules
-pub mod categories;
-pub mod core;
-pub mod phonetics;
-pub mod language_profile;
-pub mod generators;
+#![allow(dead_code)]
+
+pub mod anatomy;
+pub mod language;
+pub mod phonology;
+pub mod syllables;
+pub mod validation;

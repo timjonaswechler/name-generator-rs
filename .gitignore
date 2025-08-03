@@ -2,3 +2,13 @@
 Cargo.lock
 .DS_Store
 .claude
+.serena
+inspo
+examples
+docs
+archive
+
+test.json
+REseearch.md
+CLAUDE.md
+SYLLABLE_ENGINE_DOCUMENTATION.md

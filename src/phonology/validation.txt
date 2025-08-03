@@ -1,0 +1,114 @@
+ Konsonanten-Produktion Decision Tree (mit anatomischen Constraints)
+  ├── 1. LUFTSTROM-MECHANISMUS
+  │   ├── Pulmonisch
+  │   │   ├── Anatomie-Check: airflow.pulmonic ≠ None
+  │   │   └── → Standard-Konsonanten möglich
+  │   │
+  │   ├── Klicks (Velarisch)
+  │   │   ├── Anatomie-Check: airflow.can_produce_clicks = true
+  │   │   ├── Zusätzlich: tongue.tip + tongue.body = Agile
+  │   │   └── → Afrikanische Klicklaute
+  │   │
+  │   └── Ejektive (Glottalisch)
+  │       ├── Anatomie-Check: larynx.can_produce_ejectives = true
+  │       └── → Kaukasische/Native American Sprachen
+  │
+  ├── 2. ARTIKULATIONSORT + ANATOMISCHE VORAUSSETZUNGEN
+  │   ├── LABIAL (Lippen-Region)
+  │   │   ├── Bilabial [p, b, m, w]
+  │   │   │   ├── Anatomie-Check: lips ≠ None
+  │   │   │   ├── Optimal: lips = Flexible
+  │   │   │   └── Minimal: lips = Rigid (nur Plosive)
+  │   │   │
+  │   │   ├── Labiodental [f, v]
+  │   │   │   ├── Anatomie-Check: lips = Flexible
+  │   │   │   ├── UND: teeth ∈ {Human, Flat}
+  │   │   │   └── Fangs/None → UNMÖGLICH
+  │   │   │
+  │   │   └── Linguolabial [t̼, d̼] (SELTEN)
+  │   │       ├── Anatomie-Check: lips = Flexible
+  │   │       ├── UND: tongue.tip = Agile
+  │   │       └── → Nur in Vanuatu-Sprachen
+  │   │
+  │   ├── CORONAL (Zungen-Vorderteil)
+  │   │   ├── Dental [θ, ð]
+  │   │   │   ├── Anatomie-Check: teeth ≠ None
+  │   │   │   ├── UND: tongue.tip/blade ≠ None
+  │   │   │   └── Fangs → Erschwert, aber möglich
+  │   │   │
+  │   │   ├── Alveolar [t, d, n, s, z, l, r]
+  │   │   │   ├── Anatomie-Check: oral_cavity.has_alveolar_ridge = true
+  │   │   │   ├── UND: tongue.tip/blade ≠ None
+  │   │   │   ├── Laterale [l]: tongue.can_perform_lateral_release = true
+  │   │   │   └── Ohne Alveolarfortsatz → UNMÖGLICH
+  │   │   │
+  │   │   ├── Postalveolar
+  │   │   │   ├── Palato-alveolar [ʃ, ʒ, tʃ, dʒ]
+  │   │   │   │   ├── Anatomie-Check: has_alveolar_ridge = true
+  │   │   │   │   ├── UND: has_hard_palate = true
+  │   │   │   │   └── UND: tongue.blade = Agile
+  │   │   │   │
+  │   │   │   ├── Alveolo-palatal [ɕ, ʑ] (Mandarin/Polnisch)
+  │   │   │   │   ├── Anatomie-Check: has_hard_palate = true
+  │   │   │   │   └── UND: tongue.body + tongue.blade = Agile
+  │   │   │   │
+  │   │   │   └── Retroflex [ʈ, ɖ, ɳ, ʂ, ʐ]
+  │   │   │       ├── Anatomie-Check: tongue.can_curl_for_retroflex = true
+  │   │   │       ├── UND: tongue.tip = Agile
+  │   │   │       └── Ohne Retroflex-Fähigkeit → UNMÖGLICH
+  │   │   │
+  │   │   └── Palatal [c, ɟ, ɲ, j]
+  │   │       ├── Anatomie-Check: has_hard_palate = true
+  │   │       ├── UND: tongue.body = Agile
+  │   │       └── Ohne harten Gaumen → UNMÖGLICH
+  │   │
+  │   ├── DORSAL (Zungen-Rücken)
+  │   │   ├── Velar [k, g, ŋ, x, ɣ]
+  │   │   │   ├── Anatomie-Check: has_soft_palate = true
+  │   │   │   ├── UND: tongue.body = Agile
+  │   │   │   └── Ohne weichen Gaumen → UNMÖGLICH
+  │   │   │
+  │   │   └── Uvular [q, ɢ, ɴ, χ, ʁ]
+  │   │       ├── Anatomie-Check: has_uvula = true
+  │   │       ├── UND: tongue.body = Agile
+  │   │       └── Ohne Uvula → UNMÖGLICH
+  │   │
+  │   └── LARYNGEAL (Hals-Region)
+  │       ├── Pharyngeal [ħ, ʕ]
+  │       │   ├── Anatomie-Check: tongue.root ≠ None
+  │       │   └── Optimal: tongue.root = Agile
+  │       │
+  │       ├── Epiglottal [ʜ, ʢ]
+  │       │   ├── Anatomie-Check: has_epiglottis = true
+  │       │   └── Ohne Epiglottis → UNMÖGLICH
+  │       │
+  │       └── Glottal [ʔ, h]
+  │           ├── Anatomie-Check: larynx.voicing ≠ None
+  │           └── → Meist verfügbar
+  │
+  ├── 3. STIMMHAFTIGKEIT + LARYNX-KONTROLLE
+  │   ├── Stimmlos
+  │   │   ├── Anatomie-Check: larynx.voicing ≠ None
+  │   │   └── → Grundvoraussetzung
+  │   │
+  │   ├── Stimmhaft
+  │   │   ├── Anatomie-Check: larynx.voicing ∈ {Basic, Advanced}
+  │   │   └── None → Nur stimmlose Laute möglich
+  │   │
+  │   ├── Aspiriert [pʰ, tʰ, kʰ]
+  │   │   ├── Anatomie-Check: larynx.voicing = Advanced
+  │   │   └── UND: airflow.pulmonic = Advanced
+  │   │
+  │   └── Ejektiv [p', t', k']
+  │       ├── Anatomie-Check: larynx.can_produce_ejectives = true
+  │       └── → Kaukasische Sprachen
+  │
+  └── 4. NASALITÄT + VELIC-PORT
+      ├── Oral (nicht-nasal)
+      │   ├── Anatomie-Check: airflow.velic_port = Controllable
+      │   └── Oder: velic_port = None (immer geschlossen)
+      │
+      └── Nasal [m, n, ŋ, ɲ]
+          ├── Anatomie-Check: airflow.velic_port = Controllable
+          ├── UND: has_soft_palate = true
+          └── Ohne weichen Gaumen → Keine Nasale möglich
