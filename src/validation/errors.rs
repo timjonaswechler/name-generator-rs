@@ -1,7 +1,8 @@
-use std::collections::HashMap;
-use std::borrow::Cow;
-use serde_json::Value;
+use colored::*;
 use indexmap::IndexMap;
+use serde_json::Value;
+use std::borrow::Cow;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct ValidationError {
@@ -58,18 +59,21 @@ impl ValidationErrors {
             Some(ValidationErrorsKind::Field(_)) => {
                 // Convert field errors to struct and add
                 if let Some(ValidationErrorsKind::Field(_)) = self.0.shift_remove(&field) {
-                    self.0.insert(field, ValidationErrorsKind::Struct(vec![error]));
+                    self.0
+                        .insert(field, ValidationErrorsKind::Struct(vec![error]));
                 }
             }
             None => {
-                self.0.insert(field, ValidationErrorsKind::Struct(vec![error]));
+                self.0
+                    .insert(field, ValidationErrorsKind::Struct(vec![error]));
             }
         }
     }
 
     pub fn add_nested(&mut self, field: impl Into<Cow<'static, str>>, errors: ValidationErrors) {
         if !errors.is_empty() {
-            self.0.insert(field.into(), ValidationErrorsKind::Field(errors));
+            self.0
+                .insert(field.into(), ValidationErrorsKind::Field(errors));
         }
     }
 
@@ -78,10 +82,16 @@ impl ValidationErrors {
             match self.0.get_mut(&field) {
                 Some(existing_kind) => {
                     match (existing_kind, &kind) {
-                        (ValidationErrorsKind::Struct(existing), ValidationErrorsKind::Struct(new)) => {
+                        (
+                            ValidationErrorsKind::Struct(existing),
+                            ValidationErrorsKind::Struct(new),
+                        ) => {
                             existing.extend(new.clone());
                         }
-                        (ValidationErrorsKind::Field(existing), ValidationErrorsKind::Field(new)) => {
+                        (
+                            ValidationErrorsKind::Field(existing),
+                            ValidationErrorsKind::Field(new),
+                        ) => {
                             existing.merge(new.clone());
                         }
                         _ => {
@@ -116,6 +126,52 @@ impl ValidationErrors {
     pub fn iter(&self) -> impl Iterator<Item = (&str, &ValidationErrorsKind)> {
         self.0.iter().map(|(k, v)| (k.as_ref(), v))
     }
+
+    /// Rekursive Hilfsfunktion zur formatierten Ausgabe der Fehler
+    fn fmt_recursive(&self, f: &mut std::fmt::Formatter<'_>, prefix: &str) -> std::fmt::Result {
+        // Peekable, um das letzte Element zu erkennen und die Baumstruktur korrekt zu zeichnen
+        let mut iter = self.0.iter().peekable();
+        while let Some((field, kind)) = iter.next() {
+            let is_last = iter.peek().is_none();
+
+            // Baum-Zeichen: '├─' für Elemente in der Mitte, '└─' für das letzte Element
+            let branch = if is_last {
+                "└─".cyan()
+            } else {
+                "├─".cyan()
+            };
+            // Präfix für die nächste Ebene: '│  ' wenn es weitergeht, '   ' wenn dies der letzte Zweig war
+            let new_prefix = if is_last {
+                format!("{}   ", prefix)
+            } else {
+                format!("{}{}  ", prefix, "│".cyan())
+            };
+
+            // Feldnamen in Gelb und Fett hervorheben
+            writeln!(f, "{}{} {}", prefix, branch, field.yellow().bold())?;
+
+            match kind {
+                ValidationErrorsKind::Struct(errors) => {
+                    let mut error_iter = errors.iter().peekable();
+                    while let Some(error) = error_iter.next() {
+                        let is_last_error = error_iter.peek().is_none();
+                        let error_branch = if is_last_error {
+                            "└─".red()
+                        } else {
+                            "├─".red()
+                        };
+                        // Die eigentliche Fehlermeldung ausgeben, etwas eingerückt
+                        writeln!(f, "{}{} {}", new_prefix, error_branch, error)?;
+                    }
+                }
+                ValidationErrorsKind::Field(nested_errors) => {
+                    // Rekursiver Aufruf für verschachtelte Fehler
+                    nested_errors.fmt_recursive(f, &new_prefix)?;
+                }
+            }
+        }
+        Ok(())
+    }
 }
 
 impl std::fmt::Display for ValidationError {
@@ -123,39 +179,8 @@ impl std::fmt::Display for ValidationError {
         if let Some(message) = &self.message {
             write!(f, "{}", message)
         } else {
-            // Generate message from code and params
-            match self.code.as_ref() {
-                "unknown_phoneme" => {
-                    let phoneme = self.params.get("phoneme").and_then(|v| v.as_str()).unwrap_or("?");
-                    let suggestions = self.params.get("suggestions")
-                        .and_then(|v| v.as_array())
-                        .map(|arr| arr.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>())
-                        .unwrap_or_default();
-                    
-                    if suggestions.is_empty() {
-                        write!(f, "Unknown phoneme '{}'", phoneme)
-                    } else {
-                        write!(f, "Unknown phoneme '{}'. Did you mean: {:?}", phoneme, suggestions)
-                    }
-                }
-                "anatomically_impossible" => {
-                    let phoneme = self.params.get("phoneme").and_then(|v| v.as_str()).unwrap_or("?");
-                    write!(f, "Phoneme '{}' is anatomically impossible for this speaker", phoneme)
-                }
-                "invalid_syllable_pattern" => {
-                    let pattern = self.params.get("pattern").and_then(|v| v.as_str()).unwrap_or("?");
-                    write!(f, "Invalid syllable pattern '{}'", pattern)
-                }
-                "pattern_uses_undefined_phoneme" => {
-                    let pattern = self.params.get("pattern").and_then(|v| v.as_str()).unwrap_or("?");
-                    let phoneme = self.params.get("phoneme").and_then(|v| v.as_str()).unwrap_or("?");
-                    write!(f, "Syllable pattern '{}' uses undefined phoneme '{}'", pattern, phoneme)
-                }
-                "empty_phoneme_inventory" => {
-                    write!(f, "Phoneme inventory cannot be empty")
-                }
-                _ => write!(f, "Validation error: {}", self.code)
-            }
+            // Fallback for errors without explicit messages
+            write!(f, "Validation error: {}", self.code)
         }
     }
 }
@@ -165,28 +190,83 @@ impl std::fmt::Display for ValidationErrors {
         if self.is_empty() {
             return Ok(());
         }
+        // --- Header ---
+        writeln!(
+            f,
+            "\n{}",
+            "══════════════ Validation Errors ══════════════"
+                .red()
+                .bold()
+        )?;
+        writeln!(f, "{}", "There are some errors:".bright_black())?;
+        writeln!(f, "")?; // Leere Zeile für Abstand
 
-        for (field, kind) in &self.0 {
-            match kind {
-                ValidationErrorsKind::Struct(errors) => {
-                    for error in errors {
-                        writeln!(f, "{}: {}", field, error)?;
-                    }
-                }
-                ValidationErrorsKind::Field(nested_errors) => {
-                    writeln!(f, "{}:", field)?;
-                    for line in nested_errors.to_string().lines() {
-                        writeln!(f, "  {}", line)?;
-                    }
-                }
-            }
-        }
-        Ok(())
+        // --- Fehlerbaum ---
+        self.fmt_recursive(f, "")?;
+        // --- Footer ---
+        writeln!(
+            f,
+            "{}",
+            "══════════════════════════════════════════════════"
+                .red()
+                .bold()
+        )
+        // Die schöne Baumansicht oben enthält bereits alle Informationen
     }
 }
 
 impl std::error::Error for ValidationError {}
 impl std::error::Error for ValidationErrors {}
+
+/// Wrapper for ValidationErrors that uses Display formatting in Debug contexts
+/// This ensures that even when used with ? operator or panic, we get nice formatting
+#[derive(Clone)]
+pub struct FormattedValidationErrors(pub ValidationErrors);
+
+impl std::fmt::Debug for FormattedValidationErrors {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Use Display formatting instead of Debug
+        std::fmt::Display::fmt(&self.0, f)
+    }
+}
+
+impl std::fmt::Display for FormattedValidationErrors {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(&self.0, f)
+    }
+}
+
+impl std::error::Error for FormattedValidationErrors {}
+
+impl From<ValidationErrors> for FormattedValidationErrors {
+    fn from(errors: ValidationErrors) -> Self {
+        FormattedValidationErrors(errors)
+    }
+}
+
+impl From<FormattedValidationErrors> for ValidationErrors {
+    fn from(formatted: FormattedValidationErrors) -> Self {
+        formatted.0
+    }
+}
+
+impl From<Box<dyn std::error::Error>> for FormattedValidationErrors {
+    fn from(error: Box<dyn std::error::Error>) -> Self {
+        // Try to downcast to ValidationErrors first
+        match error.downcast::<ValidationErrors>() {
+            Ok(validation_errors) => FormattedValidationErrors(*validation_errors),
+            Err(original_error) => {
+                // Create a new ValidationErrors with the generic error
+                let mut errors = ValidationErrors::new();
+                errors.add(
+                    "general",
+                    ValidationError::new("generic_error").with_message(original_error.to_string()),
+                );
+                FormattedValidationErrors(errors)
+            }
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -200,7 +280,10 @@ mod tests {
 
         assert_eq!(error.code, "test_code");
         assert_eq!(error.message, Some("Test message".into()));
-        assert_eq!(error.params.get("param1").unwrap().as_str().unwrap(), "value1");
+        assert_eq!(
+            error.params.get("param1").unwrap().as_str().unwrap(),
+            "value1"
+        );
     }
 
     #[test]
@@ -223,7 +306,7 @@ mod tests {
         errors2.add("field2", ValidationError::new("error2"));
 
         errors1.merge(errors2);
-        
+
         assert!(errors1.has_error("field1"));
         assert!(errors1.has_error("field2"));
         assert_eq!(errors1.len(), 2);

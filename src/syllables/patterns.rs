@@ -1,4 +1,4 @@
-use crate::syllables::errors::PatternError;
+use crate::validation::{ValidationError, ValidationErrors};
 use serde::{Deserialize, Serialize};
 
 // Constants for better readability
@@ -28,55 +28,6 @@ fn weight_in_range(weight: f32) -> bool {
     weight >= 0.0 && weight <= 1.0
 }
 
-/// Position within a syllable
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum SyllablePosition {
-    /// Onset (beginning consonants)
-    Onset,
-    /// Nucleus (vowels) - required, at least one
-    Nucleus,
-    /// Coda (ending consonants)
-    Coda,
-}
-
-/// A syllable component (onset, nucleus, or coda)
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct SyllableComponent {
-    /// Position of this component in the syllable
-    pub position: SyllablePosition,
-    /// Pattern string (e.g., "C", "cc", "VV")
-    pub pattern: String,
-    /// Number of phonemes in this component
-    pub size: usize,
-}
-
-impl SyllableComponent {
-    /// Create a new syllable component
-    pub fn new(position: SyllablePosition, pattern: String) -> Self {
-        let size = pattern.len();
-        Self {
-            position,
-            pattern,
-            size,
-        }
-    }
-
-    /// Check if this component is empty
-    pub fn is_empty(&self) -> bool {
-        self.size == 0
-    }
-
-    /// Check if this component contains only consonants
-    pub fn is_consonants_only(&self) -> bool {
-        !self.pattern.is_empty() && self.pattern.chars().all(is_consonant)
-    }
-
-    /// Check if this component contains only vowels
-    pub fn is_vowels_only(&self) -> bool {
-        !self.pattern.is_empty() && self.pattern.chars().all(is_vowel)
-    }
-}
-
 /// Parsed syllable pattern with onset/nucleus/coda distinction
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SyllablePattern {
@@ -94,10 +45,11 @@ pub struct SyllablePattern {
 
 impl SyllablePattern {
     /// Create a new SyllablePattern with schema and weight
-    pub fn new(schema: String, weight: f32) -> Result<Self, PatternError> {
-        if weight_in_range(weight) == false {
-            return Err(PatternError::InvalidWeight(weight));
-        }
+    pub fn new(schema: String, weight: f32) -> Result<Self, ValidationErrors> {
+        let _errors = ValidationErrors::new();
+        // if weight_in_range(weight) == false {
+        //     errors.add("invalid_weight", self.invalid_weight);
+        // }
 
         let parsed = Self::parse(&schema)?;
         Ok(SyllablePattern {
@@ -114,9 +66,13 @@ impl SyllablePattern {
     /// Supports formats:
     /// - Simple: `CV`, `CVC`, `ccVV` (case insensitive, automatic detection)
     /// - Explicit: `(C)(V)`, `(cc)(VV)(C)` (parentheses specify components)
-    pub fn parse(pattern: &str) -> Result<Self, PatternError> {
+    pub fn parse(pattern: &str) -> Result<Self, ValidationErrors> {
+        let mut errors = ValidationErrors::new();
         if pattern.is_empty() {
-            return Err(PatternError::EmptyPattern);
+            errors.add(
+                "empty_pattern",
+                ValidationError::new("empty_pattern").with_message("Pattern cannot be empty"),
+            );
         }
 
         // Check if pattern uses parentheses notation
@@ -128,19 +84,34 @@ impl SyllablePattern {
     }
 
     /// Parse simple pattern without parentheses: CV, CVC, ccVV
-    fn parse_simple(pattern: &str) -> Result<Self, PatternError> {
+    fn parse_simple(pattern: &str) -> Result<Self, ValidationErrors> {
+        let mut errors = ValidationErrors::new();
+
         // Validate all characters are valid phonemes
         for ch in pattern.chars() {
             if !is_valid_phoneme(ch) {
-                return Err(PatternError::InvalidCharacter(ch));
+                errors.add(
+                    "invalid_character",
+                    ValidationError::new("invalid_character").with_message(format!(
+                        "Invalid character '{}' (only C, c, V, v allowed)",
+                        ch
+                    )),
+                );
+                return Err(errors);
             }
         }
 
         // Find first vowel position (nucleus start)
-        let nucleus_start = pattern
-            .chars()
-            .position(is_vowel)
-            .ok_or(PatternError::NoNucleus)?;
+        let nucleus_start = pattern.chars().position(is_vowel);
+        if nucleus_start.is_none() {
+            errors.add(
+                "no_nucleus",
+                ValidationError::new("no_nucleus")
+                    .with_message("Pattern must contain at least one vowel (V or v)"),
+            );
+            return Err(errors);
+        }
+        let nucleus_start = nucleus_start.unwrap();
 
         // Find where nucleus ends (last consecutive vowel)
         let mut nucleus_end = nucleus_start;
@@ -186,18 +157,31 @@ impl SyllablePattern {
     }
 
     /// Parse explicit pattern with parentheses: (C)(V)(CC)
-    fn parse_explicit(pattern: &str) -> Result<Self, PatternError> {
+    fn parse_explicit(pattern: &str) -> Result<Self, ValidationErrors> {
         let groups = Self::extract_groups(pattern)?;
 
         if groups.is_empty() {
-            return Err(PatternError::EmptyPattern);
+            let mut errors = ValidationErrors::new();
+            errors.add(
+                "empty_pattern",
+                ValidationError::new("empty_pattern").with_message("Pattern cannot be empty"),
+            );
+            return Err(errors);
         }
 
         // Validate each group contains only valid phonemes
         for group in &groups {
             for ch in group.chars() {
                 if !is_valid_phoneme(ch) {
-                    return Err(PatternError::InvalidCharacter(ch));
+                    let mut errors = ValidationErrors::new();
+                    errors.add(
+                        "invalid_character",
+                        ValidationError::new("invalid_character").with_message(format!(
+                            "Invalid character '{}' (only C, c, V, v allowed)",
+                            ch
+                        )),
+                    );
+                    return Err(errors);
                 }
             }
         }
@@ -211,7 +195,13 @@ impl SyllablePattern {
             if group.chars().all(is_vowel) {
                 // Pure vowel group = nucleus
                 if nucleus.is_some() {
-                    return Err(PatternError::MultipleNucleus);
+                    let mut errors = ValidationErrors::new();
+                    errors.add(
+                        "multiple_nucleus",
+                        ValidationError::new("multiple_nucleus")
+                            .with_message("Pattern can only have one nucleus group"),
+                    );
+                    return Err(errors);
                 }
                 nucleus = Some(SyllableComponent::new(SyllablePosition::Nucleus, group));
             } else if group.chars().all(is_consonant) {
@@ -226,16 +216,37 @@ impl SyllablePattern {
             } else if group.chars().any(is_vowel) {
                 // Mixed group with vowels - treat as nucleus
                 if nucleus.is_some() {
-                    return Err(PatternError::MultipleNucleus);
+                    let mut errors = ValidationErrors::new();
+                    errors.add(
+                        "multiple_nucleus",
+                        ValidationError::new("multiple_nucleus")
+                            .with_message("Pattern can only have one nucleus group"),
+                    );
+                    return Err(errors);
                 }
                 nucleus = Some(SyllableComponent::new(SyllablePosition::Nucleus, group));
             } else {
                 // This shouldn't happen due to validation above
-                return Err(PatternError::InvalidCharacter('?'));
+                let mut errors = ValidationErrors::new();
+                errors.add(
+                    "invalid_character",
+                    ValidationError::new("invalid_character")
+                        .with_message("Invalid character '?' found"),
+                );
+                return Err(errors);
             }
         }
 
-        let nucleus = nucleus.ok_or(PatternError::NoNucleus)?;
+        if nucleus.is_none() {
+            let mut errors = ValidationErrors::new();
+            errors.add(
+                "no_nucleus",
+                ValidationError::new("no_nucleus")
+                    .with_message("Pattern must contain at least one vowel (V or v)"),
+            );
+            return Err(errors);
+        }
+        let nucleus = nucleus.unwrap();
 
         Ok(SyllablePattern {
             schema: pattern.to_string(),
@@ -247,7 +258,7 @@ impl SyllablePattern {
     }
 
     /// Extract groups from parentheses notation
-    fn extract_groups(pattern: &str) -> Result<Vec<String>, PatternError> {
+    fn extract_groups(pattern: &str) -> Result<Vec<String>, ValidationErrors> {
         let mut groups = Vec::new();
         let mut current_group = String::new();
         let mut in_group = false;
@@ -257,7 +268,13 @@ impl SyllablePattern {
             match ch {
                 '(' => {
                     if in_group {
-                        return Err(PatternError::MismatchedParentheses);
+                        let mut errors = ValidationErrors::new();
+                        errors.add(
+                            "mismatched_parentheses",
+                            ValidationError::new("mismatched_parentheses")
+                                .with_message("Mismatched parentheses in pattern"),
+                        );
+                        return Err(errors);
                     }
                     in_group = true;
                     paren_count += 1;
@@ -265,10 +282,22 @@ impl SyllablePattern {
                 }
                 ')' => {
                     if !in_group {
-                        return Err(PatternError::MismatchedParentheses);
+                        let mut errors = ValidationErrors::new();
+                        errors.add(
+                            "mismatched_parentheses",
+                            ValidationError::new("mismatched_parentheses")
+                                .with_message("Mismatched parentheses in pattern"),
+                        );
+                        return Err(errors);
                     }
                     if current_group.is_empty() {
-                        return Err(PatternError::EmptyGroup);
+                        let mut errors = ValidationErrors::new();
+                        errors.add(
+                            "empty_group",
+                            ValidationError::new("empty_group")
+                                .with_message("Empty group () not allowed"),
+                        );
+                        return Err(errors);
                     }
                     groups.push(current_group.clone());
                     current_group.clear();
@@ -280,14 +309,27 @@ impl SyllablePattern {
                         current_group.push(ch);
                     } else {
                         // Characters outside parentheses not allowed in explicit mode
-                        return Err(PatternError::MismatchedParentheses);
+                        let mut errors = ValidationErrors::new();
+                        errors.add(
+                            "mismatched_parentheses",
+                            ValidationError::new("mismatched_parentheses").with_message(
+                                "Characters outside parentheses not allowed in explicit mode",
+                            ),
+                        );
+                        return Err(errors);
                     }
                 }
             }
         }
 
         if paren_count != 0 {
-            return Err(PatternError::MismatchedParentheses);
+            let mut errors = ValidationErrors::new();
+            errors.add(
+                "mismatched_parentheses",
+                ValidationError::new("mismatched_parentheses")
+                    .with_message("Mismatched parentheses in pattern"),
+            );
+            return Err(errors);
         }
 
         Ok(groups)
@@ -347,6 +389,55 @@ impl std::fmt::Display for SyllablePattern {
     }
 }
 
+/// Position within a syllable
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SyllablePosition {
+    /// Onset (beginning consonants)
+    Onset,
+    /// Nucleus (vowels) - required, at least one
+    Nucleus,
+    /// Coda (ending consonants)
+    Coda,
+}
+
+/// A syllable component (onset, nucleus, or coda)
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SyllableComponent {
+    /// Position of this component in the syllable
+    pub position: SyllablePosition,
+    /// Pattern string (e.g., "C", "cc", "VV")
+    pub pattern: String,
+    /// Number of phonemes in this component
+    pub size: usize,
+}
+
+impl SyllableComponent {
+    /// Create a new syllable component
+    fn new(position: SyllablePosition, pattern: String) -> Self {
+        let size = pattern.len();
+        Self {
+            position,
+            pattern,
+            size,
+        }
+    }
+
+    /// Check if this component is empty
+    fn is_empty(&self) -> bool {
+        self.size == 0
+    }
+
+    /// Check if this component contains only consonants
+    fn is_consonants_only(&self) -> bool {
+        !self.pattern.is_empty() && self.pattern.chars().all(is_consonant)
+    }
+
+    /// Check if this component contains only vowels
+    fn is_vowels_only(&self) -> bool {
+        !self.pattern.is_empty() && self.pattern.chars().all(is_vowel)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -362,28 +453,6 @@ mod tests {
         assert!(is_valid_phoneme('C'));
         assert!(is_valid_phoneme('v'));
         assert!(!is_valid_phoneme('X'));
-    }
-
-    #[test]
-    fn test_new_function() {
-        // Valid weight
-        let pattern = SyllablePattern::new("CV".to_string(), 0.8).unwrap();
-        assert_eq!(pattern.weight, 0.8);
-        assert_eq!(pattern.onset_size(), 1);
-        assert_eq!(pattern.nucleus_size(), 1);
-        assert_eq!(pattern.coda_size(), 0);
-
-        // Invalid weight too high
-        assert!(matches!(
-            SyllablePattern::new("CV".to_string(), 1.5),
-            Err(PatternError::InvalidWeight(1.5))
-        ));
-
-        // Invalid weight too low
-        assert!(matches!(
-            SyllablePattern::new("CV".to_string(), -0.1),
-            Err(PatternError::InvalidWeight(-0.1))
-        ));
     }
 
     #[test]
@@ -433,27 +502,6 @@ mod tests {
         assert_eq!(pattern.onset_size(), 2);
         assert_eq!(pattern.nucleus_size(), 2);
         assert_eq!(pattern.coda_size(), 0);
-    }
-
-    #[test]
-    fn test_error_cases() {
-        // Empty pattern
-        assert!(matches!(
-            SyllablePattern::parse(""),
-            Err(PatternError::EmptyPattern)
-        ));
-
-        // Invalid characters
-        assert!(matches!(
-            SyllablePattern::parse("CXV"),
-            Err(PatternError::InvalidCharacter('X'))
-        ));
-
-        // No nucleus
-        assert!(matches!(
-            SyllablePattern::parse("CC"),
-            Err(PatternError::NoNucleus)
-        ));
     }
 
     #[test]

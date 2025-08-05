@@ -19,3 +19,19 @@ impl Default for OnsetConfiguration {
         }
     }
 }
+impl OnsetConfiguration {
+    fn new(
+        allowed_phonemes: Vec<AllowedConsonant>,
+        allowed_clusters: Vec<AllowedConsonantCluster>,
+        word_initial_only: Vec<AllowedConsonant>,
+    ) -> Self {
+        //Validation:
+        // - ist der Konsonat in der Phonology KOnfiguration bekannt, falls nicht vorschläge machen,
+        // - wurde der Konosonat schon in der jeweiligen Einstellunge gesetzt, falls ja Settings ausgebnen des Konsonant(en Paar)
+        Self {
+            allowed_phonemes,
+            allowed_clusters,
+            word_initial_only,
+        }
+    }
+}

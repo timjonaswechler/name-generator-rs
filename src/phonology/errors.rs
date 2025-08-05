@@ -4,7 +4,7 @@ use crate::validation::ValidationError;
 /// Phoneme-specific ValidationError implementations
 impl PhonologyConfiguration {
     /// Creates error for unknown consonant with suggestions
-    pub fn unknown_consonant(&self, name: &str, suggestions: Vec<String>) -> ValidationError {
+    fn unknown_consonant(&self, name: &str, suggestions: Vec<String>) -> ValidationError {
         ValidationError::new("unknown_consonant")
             .add_param("attempted_name", name)
             .add_param("suggestions", suggestions.join(", "))
@@ -15,9 +15,24 @@ impl PhonologyConfiguration {
                 name, suggestions
             ))
     }
+    fn unknown_consonant_from_phonology(
+        &self,
+        name: &str,
+        suggestions: Vec<String>,
+    ) -> ValidationError {
+        ValidationError::new("unknown_consonant_from_phonology")
+            .add_param("attemted_name", name)
+            .add_param("suggestions", suggestions.join(", "))
+            .add_param("suggestion_count", suggestions.len().to_string())
+            .add_param("similarity_algorithm", "levenshtein_distance")
+            .with_message(format!(
+                "Der Konsonant '{}' ist nicht in der Phonology der Sprache aufgeführt. Meinten Sie: {:?}",
+                name, suggestions
+            ))
+    }
 
     /// Creates error for unknown vowel with suggestions
-    pub fn unknown_vowel(&self, name: &str, suggestions: Vec<String>) -> ValidationError {
+    fn unknown_vowel(&self, name: &str, suggestions: Vec<String>) -> ValidationError {
         ValidationError::new("unknown_vowel")
             .add_param("attempted_name", name)
             .add_param("suggestions", suggestions.join(", "))
@@ -30,7 +45,7 @@ impl PhonologyConfiguration {
     }
 
     /// Creates error for invalid diacritic
-    pub fn invalid_diacritic(
+    fn invalid_diacritic(
         &self,
         base: &str,
         diacritic: &str,
@@ -48,7 +63,7 @@ impl PhonologyConfiguration {
     }
 
     /// Creates error for invalid phoneme configuration
-    pub fn invalid_phoneme_configuration(&self, reason: &str) -> ValidationError {
+    fn invalid_phoneme_configuration(&self, reason: &str) -> ValidationError {
         ValidationError::new("invalid_phoneme_configuration")
             .add_param("reason", reason)
             .add_param("configuration_type", "phoneme")
@@ -56,7 +71,7 @@ impl PhonologyConfiguration {
     }
 
     /// Creates error for phoneme not found
-    pub fn phoneme_not_found(&self, phoneme: &str) -> ValidationError {
+    fn phoneme_not_found(&self, phoneme: &str) -> ValidationError {
         ValidationError::new("phoneme_not_found")
             .add_param("phoneme", phoneme)
             .add_param("registry_status", "active")
@@ -64,7 +79,7 @@ impl PhonologyConfiguration {
     }
 
     /// Creates error for duplicate phoneme
-    pub fn phoneme_already_exists(&self, phoneme: &str) -> ValidationError {
+    fn phoneme_already_exists(&self, phoneme: &str) -> ValidationError {
         ValidationError::new("phoneme_already_exists")
             .add_param("phoneme", phoneme)
             .add_param("operation", "insert")
@@ -72,7 +87,7 @@ impl PhonologyConfiguration {
     }
 
     /// Creates error for invalid phoneme category
-    pub fn invalid_phoneme_category(&self, category: &str) -> ValidationError {
+    fn invalid_phoneme_category(&self, category: &str) -> ValidationError {
         ValidationError::new("invalid_phoneme_category")
             .add_param("attempted_category", category)
             .add_param("valid_categories", "consonant, vowel, diacritic")
@@ -80,7 +95,7 @@ impl PhonologyConfiguration {
     }
 
     /// Creates error for empty phoneme registry
-    pub fn empty_phoneme_registry(&self) -> ValidationError {
+    fn empty_phoneme_registry(&self) -> ValidationError {
         ValidationError::new("empty_phoneme_registry")
             .add_param("registry_state", "empty")
             .add_param("required_phonemes", "at_least_one")
@@ -88,7 +103,7 @@ impl PhonologyConfiguration {
     }
 
     /// Creates error for JSON parsing issues
-    pub fn phoneme_json_parse_error(&self, details: &str) -> ValidationError {
+    fn phoneme_json_parse_error(&self, details: &str) -> ValidationError {
         ValidationError::new("phoneme_json_parse_error")
             .add_param("parse_error", details)
             .add_param("format", "json")
@@ -96,7 +111,7 @@ impl PhonologyConfiguration {
     }
 
     /// Creates error for Lua parsing issues
-    pub fn phoneme_lua_parse_error(&self, details: &str) -> ValidationError {
+    fn phoneme_lua_parse_error(&self, details: &str) -> ValidationError {
         ValidationError::new("phoneme_lua_parse_error")
             .add_param("parse_error", details)
             .add_param("format", "lua")
@@ -104,7 +119,7 @@ impl PhonologyConfiguration {
     }
 
     /// Creates error for format detection failures
-    pub fn phoneme_format_detection_error(&self, details: &str) -> ValidationError {
+    fn phoneme_format_detection_error(&self, details: &str) -> ValidationError {
         ValidationError::new("phoneme_format_detection_error")
             .add_param("detection_error", details)
             .add_param("supported_formats", "json, lua, yaml")
@@ -112,7 +127,7 @@ impl PhonologyConfiguration {
     }
 
     /// Creates error for invalid phoneme names
-    pub fn invalid_phoneme_name(&self, name: &str) -> ValidationError {
+    fn invalid_phoneme_name(&self, name: &str) -> ValidationError {
         ValidationError::new("invalid_phoneme_name")
             .add_param("attempted_name", name)
             .add_param("naming_rules", "ipa_compliant")
@@ -136,7 +151,7 @@ impl PhonologyConfiguration {
     }
 
     /// Suggests anatomically possible alternatives for a given phoneme
-    pub fn suggest_anatomically_possible_phonemes(
+    fn suggest_anatomically_possible_phonemes(
         &self,
         attempted: &str,
         all_phonemes: &[&str],
@@ -158,7 +173,7 @@ impl PhonologyConfiguration {
     }
 
     /// Finds best phoneme suggestions based on Levenshtein distance
-    pub fn find_best_phoneme_suggestions(
+    fn find_best_phoneme_suggestions(
         &self,
         attempted: &str,
         candidates: &[&str],
@@ -187,7 +202,7 @@ impl PhonologyConfiguration {
     }
 
     /// Creates error with intelligent phoneme suggestions
-    pub fn unknown_phoneme_with_smart_suggestions(
+    fn unknown_phoneme_with_smart_suggestions(
         &self,
         attempted: &str,
         available_consonants: &[&str],

@@ -167,7 +167,7 @@ impl SpeakerAnatomy {
                 has_uvula: true,
                 has_epiglottis: true,
             },
-            lips: LipControl::Flexible,
+            lips: LipControl::None,
             tongue: TongueControl {
                 tip: TonguePartControl::Agile,
                 blade: TonguePartControl::Agile,
