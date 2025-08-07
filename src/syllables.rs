@@ -1,43 +1,55 @@
 pub mod builder;
 pub(crate) mod coda;
-pub(crate) mod errors;
+mod errors;
 pub(crate) mod nucleus;
 pub(crate) mod onset;
-pub(crate) mod patterns;
+pub mod patterns;
 
-use crate::phonology::phonemes::{ConsonantCluster, VowelCluster};
+use crate::phonology::phonemes::PhonemeCluster;
+use crate::syllables::patterns::SyllablePattern;
+use crate::syllables::{
+    coda::CodaConfiguration, nucleus::NucleusConfiguration, onset::OnsetConfiguration,
+};
+use serde::{Deserialize, Serialize};
+
+// State Marker
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NoOnset;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WithOnset;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NoNucleus;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WithNucleus;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NoCoda;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WithCoda;
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct SyllableConfiguration<OnsetState = NoOnset, NucleusState = NoNucleus, CodaState = NoCoda>
+{
+    pub patterns: Vec<SyllablePattern>,
+    pub onset: OnsetConfiguration,
+    pub nucleus: NucleusConfiguration,
+    pub coda: CodaConfiguration,
+    _onset_state: std::marker::PhantomData<OnsetState>,
+    _nucleus_state: std::marker::PhantomData<NucleusState>,
+    _coda_state: std::marker::PhantomData<CodaState>,
+}
 
 /// Represents a complete syllable with all its components
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct Syllable {
     /// Optional onset cluster
-    pub onset: Option<ConsonantCluster>,
+    pub onset: Option<PhonemeCluster>,
     /// Required nucleus (vowel core)
-    pub nucleus: VowelCluster,
+    pub nucleus: PhonemeCluster,
     /// Optional coda cluster
-    pub coda: Option<ConsonantCluster>,
-}
-
-use crate::syllables::{
-    coda::CodaConfiguration, nucleus::NucleusConfiguration, onset::OnsetConfiguration,
-    patterns::SyllablePattern,
-};
-use serde::{Deserialize, Serialize};
-
-#[derive(Serialize, Deserialize)]
-pub struct SyllableConfiguration {
-    patterns: Vec<SyllablePattern>,
-    onset: OnsetConfiguration,
-    nucleus: NucleusConfiguration,
-    coda: CodaConfiguration,
-}
-impl Default for SyllableConfiguration {
-    fn default() -> Self {
-        Self {
-            patterns: Vec::new(),
-            onset: OnsetConfiguration::default(),
-            nucleus: NucleusConfiguration::default(),
-            coda: CodaConfiguration::default(),
-        }
-    }
+    pub coda: Option<PhonemeCluster>,
 }

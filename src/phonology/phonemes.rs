@@ -8,8 +8,9 @@ use std::borrow::Cow;
 /// This is the canonical representation used throughout the system
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Phoneme<T> {
-    pub ipa: Cow<'static, str>, // IPA representation of the phoneme
-    pub phoneme: T,             // Phoneme structure with all features
+    pub ipa: Cow<'static, str>,  // IPA representation of the phoneme
+    pub name: Cow<'static, str>, // Human-readable name of the phoneme
+    pub phoneme: T,              // Phoneme structure with all features
 }
 
 // Type aliases for specific IPA phoneme types
@@ -88,26 +89,33 @@ pub struct TriphthongConfiguration {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct AllowedPhoneme<PhonemeCategory> {
-    pub phoneme: Phoneme<PhonemeCategory>,
+pub struct AllowedPhoneme {
+    pub phoneme: String,
     pub weight: f32,
 }
-pub type AllowedConsonant = AllowedPhoneme<ConsonantConfiguration>;
-pub type AllowedVowel = AllowedPhoneme<VowelConfiguration>;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct AllowedCluster<PhonemeCategory> {
-    pub phonemes: Vec<Phoneme<PhonemeCategory>>,
+pub struct AllowedCluster {
+    pub phonemes: Vec<String>,
     pub weight: f32,
 }
-pub type AllowedConsonantCluster = AllowedCluster<ConsonantConfiguration>;
-pub type AllowedDiphthong = AllowedPhoneme<DiphthongConfiguration>;
-pub type AllowedTriphthong = AllowedPhoneme<TriphthongConfiguration>;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct PhonemeCluster<PhonemeCategory> {
-    pub phonemes: Vec<Phoneme<PhonemeCategory>>,
+pub struct AllowedDiphthong {
+    pub first: String,
+    pub second: String,
+    pub weight: f32,
 }
 
-pub type ConsonantCluster = PhonemeCluster<ConsonantConfiguration>;
-pub type VowelCluster = PhonemeCluster<VowelConfiguration>;
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AllowedTriphthong {
+    pub first: String,
+    pub second: String,
+    pub third: String,
+    pub weight: f32,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PhonemeCluster {
+    pub phonemes: Vec<String>,
+}

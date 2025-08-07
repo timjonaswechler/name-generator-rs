@@ -105,12 +105,12 @@ define_ipa_phoneme! {
 }
 
 // Backward Compatibility für N-Laute
-#[deprecated(since = "0.1.0", note = "Use N_LINGUOLABIAL instead (typo fixed)")]
-pub use N_LINGUOLABIAL as N_LINGOULABIAL;
 #[deprecated(since = "0.1.0", note = "Use N_ALVEOLAR instead")]
 pub use N_ALVEOLAR as N_VOICED;
 #[deprecated(since = "0.1.0", note = "Use N_ALVEOLAR_VOICELESS instead")]
 pub use N_ALVEOLAR_VOICELESS as N_VOICELESS;
+#[deprecated(since = "0.1.0", note = "Use N_LINGUOLABIAL instead (typo fixed)")]
+pub use N_LINGUOLABIAL as N_LINGOULABIAL;
 define_ipa_phoneme! {
     name: N_RETROFLEX,
     ipa: "ɳ",
@@ -238,10 +238,10 @@ define_ipa_phoneme! {
 }
 
 // Backward Compatibility für einfache Plosive
-#[deprecated(since = "0.1.0", note = "Use P_BILABIAL instead")]
-pub use P_BILABIAL as P;
 #[deprecated(since = "0.1.0", note = "Use B_BILABIAL instead")]
 pub use B_BILABIAL as B;
+#[deprecated(since = "0.1.0", note = "Use P_BILABIAL instead")]
+pub use P_BILABIAL as P;
 define_ipa_phoneme! {
     name: P_LABIODENTAL,
     ipa: "p̪",
@@ -316,10 +316,10 @@ define_ipa_phoneme! {
 }
 
 // Backward Compatibility für T/D
-#[deprecated(since = "0.1.0", note = "Use T_ALVEOLAR instead")]
-pub use T_ALVEOLAR as T;
 #[deprecated(since = "0.1.0", note = "Use D_ALVEOLAR instead")]
 pub use D_ALVEOLAR as D;
+#[deprecated(since = "0.1.0", note = "Use T_ALVEOLAR instead")]
+pub use T_ALVEOLAR as T;
 define_ipa_phoneme! {
     name: T_RETROFLEX,
     ipa: "ʈ",
@@ -424,10 +424,10 @@ define_ipa_phoneme! {
 }
 
 // Backward Compatibility für K/G/Q
-#[deprecated(since = "0.1.0", note = "Use K_VELAR instead")]
-pub use K_VELAR as K;
 #[deprecated(since = "0.1.0", note = "Use G_VELAR instead")]
 pub use G_VELAR as G;
+#[deprecated(since = "0.1.0", note = "Use K_VELAR instead")]
+pub use K_VELAR as K;
 #[deprecated(since = "0.1.0", note = "Use Q_UVULAR instead")]
 pub use Q_UVULAR as Q;
 define_ipa_phoneme! {
@@ -456,10 +456,10 @@ define_ipa_phoneme! {
 }
 
 // Backward Compatibility für Glottale
-#[deprecated(since = "0.1.0", note = "Use STOP_PHARYNGEAL instead")]
-pub use STOP_PHARYNGEAL as GLOTTAL_BAR;
 #[deprecated(since = "0.1.0", note = "Use STOP_GLOTTAL instead")]
 pub use STOP_GLOTTAL as GLOTTAL;
+#[deprecated(since = "0.1.0", note = "Use STOP_PHARYNGEAL instead")]
+pub use STOP_PHARYNGEAL as GLOTTAL_BAR;
 
 // ============================================================================
 // SIBILANTE - Systematische Benennung: [S/Z]_[ARTIKULATIONSSTELLE]
@@ -517,10 +517,10 @@ define_ipa_phoneme! {
 // Backward Compatibility für Sibilante
 #[deprecated(since = "0.1.0", note = "Use S_ALVEOLAR instead")]
 pub use S_ALVEOLAR as S;
-#[deprecated(since = "0.1.0", note = "Use Z_ALVEOLAR instead")]
-pub use Z_ALVEOLAR as Z;
 #[deprecated(since = "0.1.0", note = "Use S_POSTALVEOLAR instead")]
 pub use S_POSTALVEOLAR as SH;
+#[deprecated(since = "0.1.0", note = "Use Z_ALVEOLAR instead")]
+pub use Z_ALVEOLAR as Z;
 #[deprecated(since = "0.1.0", note = "Use Z_POSTALVEOLAR instead")]
 pub use Z_POSTALVEOLAR as ZH;
 define_ipa_phoneme! {
@@ -997,3 +997,154 @@ define_ipa_phoneme! {
 }
 
 // Continue at TAP/RETROFLEX => https://en.wikipedia.org/wiki/International_Phonetic_Alphabet
+pub const ALL_PULMONICS: &[&'static str] = &[
+    stringify!(M_BILABIAL),
+    stringify!(M_BILABIAL_VOICELESS),
+    stringify!(M_LABIODENTAL),
+    stringify!(M_LABIODENTAL_VOICELESS),
+    stringify!(N_LINGUOLABIAL),
+    stringify!(N_ALVEOLAR),
+    stringify!(N_ALVEOLAR_VOICELESS),
+    stringify!(N_RETROFLEX),
+    stringify!(N_RETROFLEX_VOICELESS),
+    stringify!(N_PALATAL),
+    stringify!(N_PALATAL_VOICELESS),
+    stringify!(N_VELAR),
+    stringify!(N_VELAR_VOICELESS),
+    stringify!(N_UVULAR),
+    stringify!(N_UVULAR_VOICELESS),
+    stringify!(P_BILABIAL),
+    stringify!(B_BILABIAL),
+    stringify!(P_LABIODENTAL),
+    stringify!(B_LABIODENTAL),
+    stringify!(T_LINGUOLABIAL),
+    stringify!(D_LINGUOLABIAL),
+    stringify!(T_ALVEOLAR),
+    stringify!(D_ALVEOLAR),
+    stringify!(T_RETROFLEX),
+    stringify!(D_RETROFLEX),
+    stringify!(C_PALATAL_PLOSIVE),
+    stringify!(J_PALATAL_PLOSIVE),
+    stringify!(K_VELAR),
+    stringify!(G_VELAR),
+    stringify!(Q_UVULAR),
+    stringify!(G_UVULAR),
+    stringify!(STOP_PHARYNGEAL),
+    stringify!(STOP_GLOTTAL),
+    stringify!(S_ALVEOLAR),
+    stringify!(Z_ALVEOLAR),
+    stringify!(S_POSTALVEOLAR),
+    stringify!(Z_POSTALVEOLAR),
+    stringify!(S_RETROFLEX),
+    stringify!(Z_RETROFLEX),
+    stringify!(S_PALATAL),
+    stringify!(Z_PALATAL),
+    stringify!(PH),
+    stringify!(BH),
+    stringify!(F),
+    stringify!(V),
+    stringify!(TH_LINGUOLABIAL),
+    stringify!(DH_LINGUOLABIAL),
+    stringify!(TH),
+    stringify!(DH),
+    stringify!(TH_ALVEOLAR),
+    stringify!(DH_ALVEOLAR),
+    stringify!(TURNED_R_VOIVELESS_RETRACTED_RAISED),
+    stringify!(TURNED_R_RETRACTED_RAISED),
+    stringify!(TURNED_R_RETROFLEX_RAISED),
+    stringify!(F_PALATAL),
+    stringify!(V_PALATAL),
+    stringify!(X),
+    stringify!(RAMS_HORN),
+    stringify!(X_UVULAR),
+    stringify!(REVERSED_TRUNED_R),
+    stringify!(H_BAR),
+    stringify!(GH_PHARYNGEAL),
+    stringify!(H),
+    stringify!(H_VOICED),
+    stringify!(ROUNDED_V),
+    stringify!(TURNED_R),
+    stringify!(TURNED_R_RETROFLEX),
+    stringify!(J),
+    stringify!(TURNED_M_VELAR),
+    stringify!(GLOTTAL_RAISED),
+    stringify!(V_RIGHT_HOOK_ADVANCED),
+    stringify!(V_RIGHT_HOOK),
+    stringify!(REVERSED_ROUNDED_R_LINGUOLABIAL),
+    stringify!(REVERSED_ROUNDED_R_),
+    stringify!(REVERSED_ROUNDED_R_VOICELESS    name: M_BILABIAL),
+    stringify!(M_BILABIAL_VOICELESS),
+    stringify!(M_LABIODENTAL),
+    stringify!(M_LABIODENTAL_VOICELESS),
+    stringify!(N_LINGUOLABIAL),
+    stringify!(N_ALVEOLAR),
+    stringify!(N_ALVEOLAR_VOICELESS),
+    stringify!(N_RETROFLEX),
+    stringify!(N_RETROFLEX_VOICELESS),
+    stringify!(N_PALATAL),
+    stringify!(N_PALATAL_VOICELESS),
+    stringify!(N_VELAR),
+    stringify!(N_VELAR_VOICELESS),
+    stringify!(N_UVULAR),
+    stringify!(N_UVULAR_VOICELESS),
+    stringify!(P_BILABIAL),
+    stringify!(B_BILABIAL),
+    stringify!(P_LABIODENTAL),
+    stringify!(B_LABIODENTAL),
+    stringify!(T_LINGUOLABIAL),
+    stringify!(D_LINGUOLABIAL),
+    stringify!(T_ALVEOLAR),
+    stringify!(D_ALVEOLAR),
+    stringify!(T_RETROFLEX),
+    stringify!(D_RETROFLEX),
+    stringify!(C_PALATAL_PLOSIVE),
+    stringify!(J_PALATAL_PLOSIVE),
+    stringify!(K_VELAR),
+    stringify!(G_VELAR),
+    stringify!(Q_UVULAR),
+    stringify!(G_UVULAR),
+    stringify!(STOP_PHARYNGEAL),
+    stringify!(STOP_GLOTTAL),
+    stringify!(S_ALVEOLAR),
+    stringify!(Z_ALVEOLAR),
+    stringify!(S_POSTALVEOLAR),
+    stringify!(Z_POSTALVEOLAR),
+    stringify!(S_RETROFLEX),
+    stringify!(Z_RETROFLEX),
+    stringify!(S_PALATAL),
+    stringify!(Z_PALATAL),
+    stringify!(PH),
+    stringify!(BH),
+    stringify!(F),
+    stringify!(V),
+    stringify!(TH_LINGUOLABIAL),
+    stringify!(DH_LINGUOLABIAL),
+    stringify!(TH),
+    stringify!(DH),
+    stringify!(TH_ALVEOLAR),
+    stringify!(DH_ALVEOLAR),
+    stringify!(TURNED_R_VOIVELESS_RETRACTED_RAISED),
+    stringify!(TURNED_R_RETRACTED_RAISED),
+    stringify!(TURNED_R_RETROFLEX_RAISED),
+    stringify!(F_PALATAL),
+    stringify!(V_PALATAL),
+    stringify!(X),
+    stringify!(RAMS_HORN),
+    stringify!(X_UVULAR),
+    stringify!(REVERSED_TRUNED_R),
+    stringify!(H_BAR),
+    stringify!(GH_PHARYNGEAL),
+    stringify!(H),
+    stringify!(H_VOICED),
+    stringify!(ROUNDED_V),
+    stringify!(TURNED_R),
+    stringify!(TURNED_R_RETROFLEX),
+    stringify!(J),
+    stringify!(TURNED_M_VELAR),
+    stringify!(GLOTTAL_RAISED),
+    stringify!(V_RIGHT_HOOK_ADVANCED),
+    stringify!(V_RIGHT_HOOK),
+    stringify!(REVERSED_ROUNDED_R_LINGUOLABIAL),
+    stringify!(REVERSED_ROUNDED_R_),
+    stringify!(REVERSED_ROUNDED_R_VOICELESS),
+];

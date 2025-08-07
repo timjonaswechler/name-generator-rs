@@ -1,13 +1,13 @@
-use crate::phonology::phonemes::{AllowedConsonant, AllowedConsonantCluster};
+use crate::phonology::phonemes::{AllowedCluster, AllowedPhoneme};
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct OnsetConfiguration {
-    pub allowed_phonemes: Vec<AllowedConsonant>,
-    pub allowed_clusters: Vec<AllowedConsonantCluster>,
+    pub allowed_phonemes: Vec<AllowedPhoneme>,
+    pub allowed_clusters: Vec<AllowedCluster>,
 
     // Word-position specific
-    pub word_initial_only: Vec<AllowedConsonant>, // Nur am Wortanfang erlaubt
+    pub word_initial_only: Vec<AllowedCluster>, // Nur am Wortanfang erlaubt
 }
 
 impl Default for OnsetConfiguration {
@@ -20,14 +20,11 @@ impl Default for OnsetConfiguration {
     }
 }
 impl OnsetConfiguration {
-    fn new(
-        allowed_phonemes: Vec<AllowedConsonant>,
-        allowed_clusters: Vec<AllowedConsonantCluster>,
-        word_initial_only: Vec<AllowedConsonant>,
+    pub fn new(
+        allowed_phonemes: Vec<AllowedPhoneme>,
+        allowed_clusters: Vec<AllowedCluster>,
+        word_initial_only: Vec<AllowedCluster>,
     ) -> Self {
-        //Validation:
-        // - ist der Konsonat in der Phonology KOnfiguration bekannt, falls nicht vorschläge machen,
-        // - wurde der Konosonat schon in der jeweiligen Einstellunge gesetzt, falls ja Settings ausgebnen des Konsonant(en Paar)
         Self {
             allowed_phonemes,
             allowed_clusters,

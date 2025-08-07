@@ -1,28 +1,38 @@
+mod errors;
+
 use serde::{Deserialize, Serialize};
 
 use crate::anatomy::speaker::SpeakerAnatomy;
-use crate::phonology::phonemes::{Consonant, Vowel};
 use crate::phonology::PhonologyConfiguration;
-use crate::syllables::SyllableConfiguration;
-use std::borrow::Cow;
+
+use crate::syllables::{self, NoCoda, NoNucleus, NoOnset, SyllableConfiguration};
+use crate::validation::ValidationErrors;
+
 use std::marker::PhantomData;
 
 pub struct NotInitialized;
+#[derive(Debug)]
+pub struct Initializing;
 pub struct Initialized;
-pub struct HasPhonology;
-pub struct HasAnatomy;
 
-#[derive(Serialize, Deserialize)]
-pub struct LanguageConfiguration<State = NotInitialized> {
+#[derive(Serialize, Deserialize, Debug)]
+pub struct LanguageConfiguration<
+    OnsetState = NoOnset,
+    NucleusState = NoNucleus,
+    CodaState = NoCoda,
+    State = NotInitialized,
+> {
     pub name: String,
     speaker_anatomy: SpeakerAnatomy,
     phonology: PhonologyConfiguration,
-    syllables: SyllableConfiguration,
+    syllables: SyllableConfiguration<OnsetState, NucleusState, CodaState>,
     _state: PhantomData<State>,
 }
 
-impl LanguageConfiguration<NotInitialized> {
-    pub fn new(name: impl Into<String>) -> LanguageConfiguration<Initialized> {
+impl LanguageConfiguration<NoOnset, NoNucleus, NoCoda, NotInitialized> {
+    pub fn new(
+        name: impl Into<String>,
+    ) -> LanguageConfiguration<NoOnset, NoNucleus, NoCoda, Initializing> {
         LanguageConfiguration {
             name: name.into(),
             speaker_anatomy: SpeakerAnatomy::default(),
@@ -32,74 +42,110 @@ impl LanguageConfiguration<NotInitialized> {
         }
     }
 }
-impl LanguageConfiguration<Initialized> {
-    pub fn set_anatomy(mut self, anatomy: SpeakerAnatomy) -> LanguageConfiguration<HasAnatomy> {
+impl<OnsetState, NucleusState, CodaState>
+    LanguageConfiguration<OnsetState, NucleusState, CodaState, Initializing>
+{
+    #[must_use]
+    pub fn set_anatomy(
+        mut self,
+        anatomy: SpeakerAnatomy,
+    ) -> Result<
+        LanguageConfiguration<OnsetState, NucleusState, CodaState, Initializing>,
+        ValidationErrors,
+    > {
         //Validate it the anatomy is possible
+        let mut errors = ValidationErrors::new();
+
+        if let Err(e) = anatomy.validate_anatomical_consistency() {
+            errors.merge(e);
+        }
+
         self.speaker_anatomy = anatomy;
-        LanguageConfiguration {
-            name: self.name,
-            speaker_anatomy: self.speaker_anatomy,
-            phonology: self.phonology,
-            syllables: self.syllables,
-            _state: PhantomData,
+
+        if errors.is_empty() {
+            Ok(LanguageConfiguration {
+                name: self.name,
+                speaker_anatomy: self.speaker_anatomy,
+                phonology: self.phonology,
+                syllables: self.syllables,
+                _state: PhantomData,
+            })
+        } else {
+            Err(errors)
         }
     }
-}
-impl LanguageConfiguration<HasAnatomy> {
+
+    #[must_use]
     pub fn set_phonology(
         mut self,
         phonology: PhonologyConfiguration,
-    ) -> Result<LanguageConfiguration<HasPhonology>, Box<dyn std::error::Error>> {
+    ) -> Result<
+        LanguageConfiguration<OnsetState, NucleusState, CodaState, Initializing>,
+        ValidationErrors,
+    > {
         // Validate the phonology is possible with the anatomy
-        phonology.validate_against_anatomy(&self.speaker_anatomy)?;
-        self.phonology = phonology;
-        Ok(LanguageConfiguration {
-            name: self.name,
-            speaker_anatomy: self.speaker_anatomy,
-            phonology: self.phonology,
-            syllables: self.syllables,
-            _state: PhantomData,
-        })
-    }
-    pub fn add_consonant(mut self, consonant: &'static Consonant) -> Self {
-        self.phonology.consonants.push(Cow::Borrowed(consonant));
-        self
+        let mut errors = ValidationErrors::new();
+
+        if let Err(e) = phonology.validate_against_anatomy(&self.speaker_anatomy) {
+            errors.merge(e);
+        }
+
+        if errors.is_empty() {
+            self.phonology = phonology;
+            Ok(LanguageConfiguration {
+                name: self.name,
+                speaker_anatomy: self.speaker_anatomy,
+                phonology: self.phonology,
+                syllables: self.syllables,
+                _state: PhantomData,
+            })
+        } else {
+            Err(errors)
+        }
     }
 
-    pub fn add_vowel(mut self, vowel: &'static Vowel) -> Self {
-        self.phonology.vowels.push(Cow::Borrowed(vowel));
-        self
+    #[must_use]
+    pub fn set_syllables<NewOnsetState, NewNucleusState, NewCodaState>(
+        self,
+        syllables: SyllableConfiguration<NewOnsetState, NewNucleusState, NewCodaState>,
+    ) -> Result<
+        LanguageConfiguration<NewOnsetState, NewNucleusState, NewCodaState, Initializing>,
+        ValidationErrors,
+    > {
+        let mut errors = ValidationErrors::new();
+
+        match syllables.validate_against_phonology(&self.phonology) {
+            Ok(_) => Ok(LanguageConfiguration {
+                name: self.name,
+                speaker_anatomy: self.speaker_anatomy,
+                phonology: self.phonology,
+                syllables: syllables,
+                _state: PhantomData,
+            }),
+            Err(e) => {
+                errors.merge(e);
+                Err(errors)
+            }
+        }
     }
 }
-impl<State> LanguageConfiguration<State> {
-    pub fn set_syllables(mut self, syllables: SyllableConfiguration) -> Self {
-        // Validate the syllable structure is possible with the phonology
-        // is there any phoneme missing
-        // is the syllable config valid (e.g. no empty syllables, consonant not in nucleus, etc.)
 
-        self.syllables = syllables;
-        LanguageConfiguration {
-            name: self.name,
-            speaker_anatomy: self.speaker_anatomy,
-            phonology: self.phonology,
-            syllables: self.syllables,
-            _state: PhantomData,
-        }
+impl<OnsetState, NucleusState, CodaState, State>
+    LanguageConfiguration<OnsetState, NucleusState, CodaState, State>
+{
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn anatomy(&self) -> &SpeakerAnatomy {
+        &self.speaker_anatomy
     }
 
     pub fn phonology(&self) -> &PhonologyConfiguration {
         &self.phonology
     }
-    pub fn anatomy(&self) -> &SpeakerAnatomy {
-        &self.speaker_anatomy
-    }
-    pub fn syllables(&self) -> &SyllableConfiguration {
+
+    pub fn syllables(&self) -> &SyllableConfiguration<OnsetState, NucleusState, CodaState> {
         &self.syllables
     }
-}
-
-pub(crate) enum Format {
-    Lua,
-    Json,
-    Unknown,
 }

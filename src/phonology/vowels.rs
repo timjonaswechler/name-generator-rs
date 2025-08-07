@@ -365,3 +365,41 @@ define_ipa_phoneme! {
         diacritics: EMPTY_DIACRITICS,
     }
 }
+pub fn all_vowels() -> Vec<&'static str> {
+    [ALL_VOWELS].concat()
+}
+const ALL_VOWELS: &[&'static str] = &[
+    stringify!(I),
+    stringify!(Y),
+    stringify!(SMALL_CAP_I),
+    stringify!(SMALL_CAP_Y),
+    stringify!(E),
+    stringify!(O_WITH_STROKE),
+    stringify!(E_RAISED),
+    stringify!(O_WITH_STROKE_RAISED),
+    stringify!(EPSILON),
+    stringify!(OE),
+    stringify!(AE),
+    stringify!(A),
+    stringify!(SMALL_CAP_OE),
+    stringify!(I_BAR),
+    stringify!(U_BAR),
+    stringify!(REVERSED_E),
+    stringify!(O_BAR),
+    stringify!(SCHWA),
+    stringify!(REVERSED_EPSILON),
+    stringify!(CLOSED_REVERSED_EPSILON),
+    stringify!(TURNED_A),
+    stringify!(A_CENTRALIZED),
+    stringify!(TURNED_M),
+    stringify!(U),
+    stringify!(UPSILON),
+    stringify!(RAMS_HORN),
+    stringify!(O),
+    stringify!(RAMS_HORN_RAISED),
+    stringify!(O_RAISED),
+    stringify!(TURNED_V),
+    stringify!(OPEN_O),
+    stringify!(SCRIPT_A),
+    stringify!(TURNED_SCRIPT_A),
+];

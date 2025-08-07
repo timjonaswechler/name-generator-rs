@@ -238,7 +238,7 @@ impl PhonologyConfiguration {
                 .add_param("attempted_phoneme", attempted)
                 .add_param("suggestions", all_suggestions.join(", "))
                 .add_param("suggestion_count", all_suggestions.len().to_string())
-                .add_param("similarity_algorithm", "levenshtein_distance")
+                .add_param("similarity_algorithm", "levenshtein_distances")
                 .with_message(format!(
                     "Unbekanntes Phonem '{}'. Meinten Sie: {:?}",
                     attempted, all_suggestions

@@ -2,7 +2,6 @@ use crate::anatomy::speaker::{
     AirflowControl, LarynxControl, LipControl, OralCavity, PulmonicControl, SpeakerAnatomy,
     TeethConfiguration, TongueControl, TonguePartControl, VelicPortControl, VoicingControl,
 };
-use crate::validation::ValidationErrors;
 
 impl SpeakerAnatomy {
     /// Erstellt einen neuen Builder mit Standardwerten für einen menschlichen Sprecher.
@@ -135,28 +134,6 @@ impl SpeakerAnatomy {
         self
     }
 
-    /// Baut das vollständige Anatomie-Modell des Sprechers.
-    /// Führt anatomische Validierung durch und gibt einen Fehler zurück,
-    /// wenn die Konfiguration anatomisch unmöglich ist.
-    pub fn build(self) -> Result<SpeakerAnatomy, ValidationErrors> {
-        let mut errors = ValidationErrors::new();
-
-        if let Err(e) = self.validate_anatomical_consistency() {
-            errors.merge(e);
-        }
-
-        if errors.is_empty() {
-            Ok(SpeakerAnatomy {
-                oral_cavity: self.oral_cavity,
-                lips: self.lips,
-                tongue: self.tongue,
-                larynx: self.larynx,
-                airflow: self.airflow,
-            })
-        } else {
-            Err(errors)
-        }
-    }
     pub fn human() -> Self {
         Self {
             oral_cavity: OralCavity {
@@ -167,7 +144,7 @@ impl SpeakerAnatomy {
                 has_uvula: true,
                 has_epiglottis: true,
             },
-            lips: LipControl::None,
+            lips: LipControl::Flexible,
             tongue: TongueControl {
                 tip: TonguePartControl::Agile,
                 blade: TonguePartControl::Agile,

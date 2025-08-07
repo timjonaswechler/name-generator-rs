@@ -15,6 +15,7 @@ macro_rules! define_ipa_phoneme {
         pub static $name: $crate::phonology::phonemes::Vowel =
             $crate::phonology::phonemes::Phoneme {
                 ipa: std::borrow::Cow::Borrowed($ipa),
+                name: std::borrow::Cow::Borrowed(stringify!($name)),
                 phoneme: $crate::phonology::phonemes::VowelConfiguration {
                     position: $pos,
                     height: $height,
@@ -41,6 +42,7 @@ macro_rules! define_ipa_phoneme {
         pub static $name: $crate::phonology::phonemes::Consonant =
             $crate::phonology::phonemes::Phoneme {
                 ipa: std::borrow::Cow::Borrowed($ipa),
+                name: std::borrow::Cow::Borrowed(stringify!($name)),
                 phoneme: $crate::phonology::phonemes::ConsonantConfiguration {
                     airflow: $airflow,
                     manner: $manner,
