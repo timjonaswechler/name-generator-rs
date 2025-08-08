@@ -4,8 +4,8 @@ use crate::{
     },
     syllables::{
         errors::utilities::{
-            create_phoneme_validation_error, generate_phoneme_suggestions,
-            validate_clusters_against_list_with_error_key, validate_diphthongs_against_list,
+            create_phoneme_suggestions, create_phoneme_validation_error,
+            validate_clusters_against_list, validate_diphthongs_against_list,
             validate_phonemes_against_list, validate_triphthongs_against_list,
         },
         nucleus::NucleusConfiguration,
@@ -17,26 +17,37 @@ impl NucleusConfiguration {
     pub fn validate(&mut self) -> Result<NucleusConfiguration, ValidationErrors> {
         let mut errors = ValidationErrors::new();
 
-        // checke with is empty
-        let empty_check = [
+        let allow_empty_check = [
             self.allowed_phonemes.is_empty(),
             self.allowed_diphthongs.is_empty(),
             self.allowed_triphthongs.is_empty(),
+        ];
+
+        let mask = allow_empty_check
+            .iter()
+            .enumerate()
+            .fold(0u8, |acc, (i, &b)| acc | ((b as u8) << i));
+        
+        let word_empty_check = [
             self.word_initial_only.is_empty(),
             self.word_final_only.is_empty(),
         ];
-        match empty_check {
-            [true, true, true, true, true]
-            | [true, true, true, true, false]
-            | [true, true, true, false, true]
-            | [true, true, true, false, false] => {
+        let word_mask = word_empty_check
+            .iter()
+            .enumerate()
+            .fold(0u8, |acc, (i, &b)| acc | ((b as u8) << i));
+
+        match mask {
+            // empty_nucleus_check
+            0b111 => {
                 errors.add(
                     "empty_nucleus",
                     ValidationError::new("empty_nucleus")
                         .with_message("Nucleus must contain at least one phoneme or cluster"),
                 );
             }
-            [false, true, true, true, true] => {
+            // allowed_phonemes_only
+            0b011 => {
                 if let Err(e) = validate_phonemes_against_list(
                     &self.allowed_phonemes,
                     &all_vowels(),
@@ -45,85 +56,49 @@ impl NucleusConfiguration {
                 ) {
                     errors.merge(e);
                 }
-                for element in &self.allowed_phonemes {
-                    let temp = AllowedCluster {
-                        phonemes: vec![element.phoneme.clone()],
-                        weight: element.weight,
-                    };
-                    self.word_initial_only.push(temp.clone());
-                    self.word_final_only.push(temp);
+
+                if let Err(e) = self.validate_word_mask(word_mask) {
+                    errors.merge(e);
+                }
+
+                match word_mask {
+                    0b11 => {
+                        // Da wir die gleichen Daten zu zwei Listen hinzufügen,
+                        // erstellen wir sie einmal und klonen sie dann.
+                        let clusters: Vec<AllowedCluster> = self
+                            .allowed_phonemes
+                            .iter()
+                            .map(|element| AllowedCluster {
+                                phonemes: vec![element.phoneme.clone()],
+                                weight: element.weight,
+                            })
+                            .collect();
+
+                        self.word_initial_only.extend(clusters.clone());
+                        self.word_final_only.extend(clusters);
+                    }
+
+                    0b01 => {
+                        self.word_final_only
+                            .extend(self.allowed_phonemes.iter().map(|element| AllowedCluster {
+                                phonemes: vec![element.phoneme.clone()],
+                                weight: element.weight,
+                            }));
+                    }
+
+                    0b10 => {
+                        self.word_initial_only
+                            .extend(self.allowed_phonemes.iter().map(|element| AllowedCluster {
+                                phonemes: vec![element.phoneme.clone()],
+                                weight: element.weight,
+                            }));
+                    }
+
+                    _ => unreachable!(),
                 }
             }
-            [false, true, true, false, true] => {
-                if let Err(e) = validate_phonemes_against_list(
-                    &self.allowed_phonemes,
-                    &all_vowels(),
-                    "Vokal",
-                    "unknown_vowel",
-                ) {
-                    errors.merge(e);
-                }
-                if let Err(e) = validate_clusters_against_list_with_error_key(
-                    &self.word_initial_only,
-                    &all_vowels(),
-                    "Vokal",
-                    "unknown_vowel_in_word_initial_only",
-                    "word_initial_only",
-                    |cluster_idx, phoneme_idx| {
-                        format!(
-                            "invalid_word_initial_phoneme_{}_{}",
-                            cluster_idx, phoneme_idx
-                        )
-                    },
-                ) {
-                    errors.merge(e);
-                }
-                for element in &self.allowed_phonemes {
-                    let temp = AllowedCluster {
-                        phonemes: vec![element.phoneme.clone()],
-                        weight: element.weight,
-                    };
-                    self.word_initial_only.push(temp);
-                }
-            }
-            [false, true, true, true, false] => {
-                if let Err(e) = validate_phonemes_against_list(
-                    &self.allowed_phonemes,
-                    &all_vowels(),
-                    "Vokal",
-                    "unknown_vowel",
-                ) {
-                    errors.merge(e);
-                }
-                if let Err(e) = validate_clusters_against_list_with_error_key(
-                    &self.word_final_only,
-                    &all_vowels(),
-                    "Vokal",
-                    "unknown_vowel_in_word_final_only",
-                    "word_final_only",
-                    |cluster_idx, phoneme_idx| {
-                        format!("invalid_word_final_phoneme_{}_{}", cluster_idx, phoneme_idx)
-                    },
-                ) {
-                    errors.merge(e);
-                }
-                for element in &self.allowed_phonemes {
-                    let temp = AllowedCluster {
-                        phonemes: vec![element.phoneme.clone()],
-                        weight: element.weight,
-                    };
-                    self.word_final_only.push(temp);
-                }
-            }
-            [false, false, true, true, true] => {
-                if let Err(e) = validate_phonemes_against_list(
-                    &self.allowed_phonemes,
-                    &all_vowels(),
-                    "Vokal",
-                    "unknown_vowel",
-                ) {
-                    errors.merge(e);
-                }
+            // allowed_diphthongs_only
+            0b101 => {
                 if let Err(e) = validate_diphthongs_against_list(
                     &self.allowed_diphthongs,
                     &all_vowels(),
@@ -132,123 +107,61 @@ impl NucleusConfiguration {
                 ) {
                     errors.merge(e);
                 }
-                for element in &self.allowed_phonemes {
-                    let temp = AllowedCluster {
-                        phonemes: vec![element.phoneme.clone()],
-                        weight: element.weight,
-                    };
-                    self.word_initial_only.push(temp.clone());
-                    self.word_final_only.push(temp);
+
+                if let Err(e) = self.validate_word_mask(word_mask) {
+                    errors.merge(e);
                 }
-                for element in &self.allowed_diphthongs {
-                    let temp = AllowedCluster {
-                        phonemes: vec![element.first.clone(), element.second.clone()],
-                        weight: element.weight,
-                    };
-                    self.word_initial_only.push(temp.clone());
-                    self.word_final_only.push(temp);
+
+                match word_mask {
+                    0b11 => {
+                        let clusters: Vec<AllowedCluster> = self
+                            .allowed_diphthongs
+                            .iter()
+                            .map(|element| AllowedCluster {
+                                phonemes: vec![element.first.clone(), element.second.clone()],
+                                weight: element.weight,
+                            })
+                            .collect();
+
+                        self.word_initial_only.extend(clusters.clone());
+                        self.word_final_only.extend(clusters);
+                    }
+
+                    0b01 => {
+                        self.word_final_only
+                            .extend(
+                                self.allowed_diphthongs
+                                    .iter()
+                                    .map(|element| AllowedCluster {
+                                        phonemes: vec![
+                                            element.first.clone(),
+                                            element.second.clone(),
+                                        ],
+                                        weight: element.weight,
+                                    }),
+                            );
+                    }
+
+                    0b10 => {
+                        self.word_initial_only
+                            .extend(
+                                self.allowed_diphthongs
+                                    .iter()
+                                    .map(|element| AllowedCluster {
+                                        phonemes: vec![
+                                            element.first.clone(),
+                                            element.second.clone(),
+                                        ],
+                                        weight: element.weight,
+                                    }),
+                            );
+                    }
+
+                    _ => unreachable!(),
                 }
             }
-            [false, false, true, false, true] => {
-                if let Err(e) = validate_phonemes_against_list(
-                    &self.allowed_phonemes,
-                    &all_vowels(),
-                    "Vokal",
-                    "unknown_vowel",
-                ) {
-                    errors.merge(e);
-                }
-                if let Err(e) = validate_diphthongs_against_list(
-                    &self.allowed_diphthongs,
-                    &all_vowels(),
-                    "Diphthong",
-                    "unknown_diphthong",
-                ) {
-                    errors.merge(e);
-                }
-                if let Err(e) = validate_clusters_against_list_with_error_key(
-                    &self.word_initial_only,
-                    &all_vowels(),
-                    "Vokal",
-                    "unknown_vowel_in_word_initial_only",
-                    "word_initial_only",
-                    |cluster_idx, phoneme_idx| {
-                        format!(
-                            "invalid_word_initial_phoneme_{}_{}",
-                            cluster_idx, phoneme_idx
-                        )
-                    },
-                ) {
-                    errors.merge(e);
-                }
-                for element in &self.allowed_phonemes {
-                    let temp = AllowedCluster {
-                        phonemes: vec![element.phoneme.clone()],
-                        weight: element.weight,
-                    };
-                    self.word_initial_only.push(temp);
-                }
-                for element in &self.allowed_diphthongs {
-                    let temp = AllowedCluster {
-                        phonemes: vec![element.first.clone(), element.second.clone()],
-                        weight: element.weight,
-                    };
-                    self.word_initial_only.push(temp);
-                }
-            }
-            [false, false, true, true, false] => {
-                if let Err(e) = validate_phonemes_against_list(
-                    &self.allowed_phonemes,
-                    &all_vowels(),
-                    "Vokal",
-                    "unknown_vowel",
-                ) {
-                    errors.merge(e);
-                }
-                if let Err(e) = validate_diphthongs_against_list(
-                    &self.allowed_diphthongs,
-                    &all_vowels(),
-                    "Diphthong",
-                    "unknown_diphthong",
-                ) {
-                    errors.merge(e);
-                }
-                if let Err(e) = validate_clusters_against_list_with_error_key(
-                    &self.word_final_only,
-                    &all_vowels(),
-                    "Vokal",
-                    "unknown_vowel_in_word_final_only",
-                    "word_final_only",
-                    |cluster_idx, phoneme_idx| {
-                        format!("invalid_word_final_phoneme_{}_{}", cluster_idx, phoneme_idx)
-                    },
-                ) {
-                    errors.merge(e);
-                }
-                for element in &self.allowed_phonemes {
-                    let temp = AllowedCluster {
-                        phonemes: vec![element.phoneme.clone()],
-                        weight: element.weight,
-                    };
-                    self.word_final_only.push(temp);
-                }
-                for element in &self.allowed_diphthongs {
-                    let temp = AllowedCluster {
-                        phonemes: vec![element.first.clone(), element.second.clone()],
-                        weight: element.weight,
-                    };
-                    self.word_final_only.push(temp);
-                }
-            }
-            [false, true, false, true, true] => {
-                if let Err(e) = validate_phonemes_against_list(
-                    &self.allowed_phonemes,
-                    &all_vowels(),
-                    "Vokal",
-                    "unknown_vowel",
-                ) {
-                    errors.merge(e);
-                }
+            // allowed_triphthongs_only
+            0b110 => {
                 if let Err(e) = validate_triphthongs_against_list(
                     &self.allowed_triphthongs,
                     &all_vowels(),
@@ -257,699 +170,63 @@ impl NucleusConfiguration {
                 ) {
                     errors.merge(e);
                 }
-                for element in &self.allowed_phonemes {
-                    let temp = AllowedCluster {
-                        phonemes: vec![element.phoneme.clone()],
-                        weight: element.weight,
-                    };
-                    self.word_initial_only.push(temp.clone());
-                    self.word_final_only.push(temp);
+
+                if let Err(e) = self.validate_word_mask(word_mask) {
+                    errors.merge(e);
                 }
-                for element in &self.allowed_triphthongs {
-                    let temp = AllowedCluster {
-                        phonemes: vec![
-                            element.first.clone(),
-                            element.second.clone(),
-                            element.third.clone(),
-                        ],
-                        weight: element.weight,
-                    };
-                    self.word_initial_only.push(temp.clone());
-                    self.word_final_only.push(temp);
+
+                match word_mask {
+                    0b11 => {
+                        let clusters: Vec<AllowedCluster> = self
+                            .allowed_triphthongs
+                            .iter()
+                            .map(|element| AllowedCluster {
+                                phonemes: vec![
+                                    element.first.clone(),
+                                    element.second.clone(),
+                                    element.third.clone(),
+                                ],
+                                weight: element.weight,
+                            })
+                            .collect();
+
+                        self.word_initial_only.extend(clusters.clone());
+                        self.word_final_only.extend(clusters);
+                    }
+
+                    0b01 => {
+                        self.word_final_only
+                            .extend(self.allowed_triphthongs.iter().map(|element| {
+                                AllowedCluster {
+                                    phonemes: vec![
+                                        element.first.clone(),
+                                        element.second.clone(),
+                                        element.third.clone(),
+                                    ],
+                                    weight: element.weight,
+                                }
+                            }));
+                    }
+
+                    0b10 => {
+                        self.word_initial_only
+                            .extend(self.allowed_triphthongs.iter().map(|element| {
+                                AllowedCluster {
+                                    phonemes: vec![
+                                        element.first.clone(),
+                                        element.second.clone(),
+                                        element.third.clone(),
+                                    ],
+                                    weight: element.weight,
+                                }
+                            }));
+                    }
+
+                    _ => unreachable!(),
                 }
             }
-            [false, true, false, false, true] => {
-                if let Err(e) = validate_phonemes_against_list(
-                    &self.allowed_phonemes,
-                    &all_vowels(),
-                    "Vokal",
-                    "unknown_vowel",
-                ) {
-                    errors.merge(e);
-                }
-                if let Err(e) = validate_triphthongs_against_list(
-                    &self.allowed_triphthongs,
-                    &all_vowels(),
-                    "Triphthongs",
-                    "unknown_triphthong",
-                ) {
-                    errors.merge(e);
-                }
-                if let Err(e) = validate_clusters_against_list_with_error_key(
-                    &self.word_initial_only,
-                    &all_vowels(),
-                    "Vokal",
-                    "unknown_vowel_in_word_initial_only",
-                    "word_initial_only",
-                    |cluster_idx, phoneme_idx| {
-                        format!(
-                            "invalid_word_initial_phoneme_{}_{}",
-                            cluster_idx, phoneme_idx
-                        )
-                    },
-                ) {
-                    errors.merge(e);
-                }
-                for element in &self.allowed_phonemes {
-                    let temp = AllowedCluster {
-                        phonemes: vec![element.phoneme.clone()],
-                        weight: element.weight,
-                    };
-                    self.word_initial_only.push(temp);
-                }
-                for element in &self.allowed_triphthongs {
-                    let temp = AllowedCluster {
-                        phonemes: vec![
-                            element.first.clone(),
-                            element.second.clone(),
-                            element.third.clone(),
-                        ],
-                        weight: element.weight,
-                    };
-                    self.word_initial_only.push(temp);
-                }
-            }
-            [false, true, false, true, false] => {
-                if let Err(e) = validate_phonemes_against_list(
-                    &self.allowed_phonemes,
-                    &all_vowels(),
-                    "Vokal",
-                    "unknown_vowel",
-                ) {
-                    errors.merge(e);
-                }
-                if let Err(e) = validate_triphthongs_against_list(
-                    &self.allowed_triphthongs,
-                    &all_vowels(),
-                    "Triphthongs",
-                    "unknown_triphthong",
-                ) {
-                    errors.merge(e);
-                }
-                if let Err(e) = validate_clusters_against_list_with_error_key(
-                    &self.word_final_only,
-                    &all_vowels(),
-                    "Vokal",
-                    "unknown_vowel_in_word_final_only",
-                    "word_final_only",
-                    |cluster_idx, phoneme_idx| {
-                        format!("invalid_word_final_phoneme_{}_{}", cluster_idx, phoneme_idx)
-                    },
-                ) {
-                    errors.merge(e);
-                }
-                for element in &self.allowed_phonemes {
-                    let temp = AllowedCluster {
-                        phonemes: vec![element.phoneme.clone()],
-                        weight: element.weight,
-                    };
-                    self.word_final_only.push(temp);
-                }
-                for element in &self.allowed_triphthongs {
-                    let temp = AllowedCluster {
-                        phonemes: vec![
-                            element.first.clone(),
-                            element.second.clone(),
-                            element.third.clone(),
-                        ],
-                        weight: element.weight,
-                    };
-                    self.word_final_only.push(temp);
-                }
-            }
-            [true, false, true, true, true] => {
-                if let Err(e) = validate_diphthongs_against_list(
-                    &self.allowed_diphthongs,
-                    &all_vowels(),
-                    "Diphthong",
-                    "unknown_diphthong",
-                ) {
-                    errors.merge(e);
-                }
-                for element in &self.allowed_diphthongs {
-                    let temp = AllowedCluster {
-                        phonemes: vec![element.first.clone(), element.second.clone()],
-                        weight: element.weight,
-                    };
-                    self.word_initial_only.push(temp.clone());
-                    self.word_final_only.push(temp);
-                }
-            }
-            [true, false, true, false, true] => {
-                if let Err(e) = validate_diphthongs_against_list(
-                    &self.allowed_diphthongs,
-                    &all_vowels(),
-                    "Diphthong",
-                    "unknown_diphthong",
-                ) {
-                    errors.merge(e);
-                }
-                if let Err(e) = validate_clusters_against_list_with_error_key(
-                    &self.word_initial_only,
-                    &all_vowels(),
-                    "Vokal",
-                    "unknown_vowel_in_word_initial_only",
-                    "word_initial_only",
-                    |cluster_idx, phoneme_idx| {
-                        format!(
-                            "invalid_word_initial_phoneme_{}_{}",
-                            cluster_idx, phoneme_idx
-                        )
-                    },
-                ) {
-                    errors.merge(e);
-                }
-                for element in &self.allowed_diphthongs {
-                    let temp = AllowedCluster {
-                        phonemes: vec![element.first.clone(), element.second.clone()],
-                        weight: element.weight,
-                    };
-                    self.word_initial_only.push(temp);
-                }
-            }
-            [true, false, true, true, false] => {
-                if let Err(e) = validate_diphthongs_against_list(
-                    &self.allowed_diphthongs,
-                    &all_vowels(),
-                    "Diphthong",
-                    "unknown_diphthong",
-                ) {
-                    errors.merge(e);
-                }
-                if let Err(e) = validate_clusters_against_list_with_error_key(
-                    &self.word_final_only,
-                    &all_vowels(),
-                    "Vokal",
-                    "unknown_vowel_in_word_final_only",
-                    "word_final_only",
-                    |cluster_idx, phoneme_idx| {
-                        format!("invalid_word_final_phoneme_{}_{}", cluster_idx, phoneme_idx)
-                    },
-                ) {
-                    errors.merge(e);
-                }
-                for element in &self.allowed_diphthongs {
-                    let temp = AllowedCluster {
-                        phonemes: vec![element.first.clone(), element.second.clone()],
-                        weight: element.weight,
-                    };
-                    self.word_final_only.push(temp);
-                }
-            }
-            [true, false, false, true, true] => {
-                if let Err(e) = validate_diphthongs_against_list(
-                    &self.allowed_diphthongs,
-                    &all_vowels(),
-                    "Diphthong",
-                    "unknown_diphthong",
-                ) {
-                    errors.merge(e);
-                }
-                if let Err(e) = validate_triphthongs_against_list(
-                    &self.allowed_triphthongs,
-                    &all_vowels(),
-                    "Triphthongs",
-                    "unknown_triphthong",
-                ) {
-                    errors.merge(e);
-                }
-                for element in &self.allowed_diphthongs {
-                    let temp = AllowedCluster {
-                        phonemes: vec![element.first.clone(), element.second.clone()],
-                        weight: element.weight,
-                    };
-                    self.word_initial_only.push(temp.clone());
-                    self.word_final_only.push(temp);
-                }
-                for element in &self.allowed_triphthongs {
-                    let temp = AllowedCluster {
-                        phonemes: vec![
-                            element.first.clone(),
-                            element.second.clone(),
-                            element.third.clone(),
-                        ],
-                        weight: element.weight,
-                    };
-                    self.word_initial_only.push(temp.clone());
-                    self.word_final_only.push(temp);
-                }
-            }
-            [true, false, false, false, true] => {
-                if let Err(e) = validate_diphthongs_against_list(
-                    &self.allowed_diphthongs,
-                    &all_vowels(),
-                    "Diphthong",
-                    "unknown_diphthong",
-                ) {
-                    errors.merge(e);
-                }
-                if let Err(e) = validate_triphthongs_against_list(
-                    &self.allowed_triphthongs,
-                    &all_vowels(),
-                    "Triphthongs",
-                    "unknown_triphthong",
-                ) {
-                    errors.merge(e);
-                }
-                if let Err(e) = validate_clusters_against_list_with_error_key(
-                    &self.word_initial_only,
-                    &all_vowels(),
-                    "Vokal",
-                    "unknown_vowel_in_word_initial_only",
-                    "word_initial_only",
-                    |cluster_idx, phoneme_idx| {
-                        format!(
-                            "invalid_word_initial_phoneme_{}_{}",
-                            cluster_idx, phoneme_idx
-                        )
-                    },
-                ) {
-                    errors.merge(e);
-                }
-                for element in &self.allowed_diphthongs {
-                    let temp = AllowedCluster {
-                        phonemes: vec![element.first.clone(), element.second.clone()],
-                        weight: element.weight,
-                    };
-                    self.word_initial_only.push(temp);
-                }
-                for element in &self.allowed_triphthongs {
-                    let temp = AllowedCluster {
-                        phonemes: vec![
-                            element.first.clone(),
-                            element.second.clone(),
-                            element.third.clone(),
-                        ],
-                        weight: element.weight,
-                    };
-                    self.word_initial_only.push(temp);
-                }
-            }
-            [true, false, false, true, false] => {
-                if let Err(e) = validate_diphthongs_against_list(
-                    &self.allowed_diphthongs,
-                    &all_vowels(),
-                    "Diphthong",
-                    "unknown_diphthong",
-                ) {
-                    errors.merge(e);
-                }
-                if let Err(e) = validate_triphthongs_against_list(
-                    &self.allowed_triphthongs,
-                    &all_vowels(),
-                    "Triphthongs",
-                    "unknown_triphthong",
-                ) {
-                    errors.merge(e);
-                }
-                if let Err(e) = validate_clusters_against_list_with_error_key(
-                    &self.word_final_only,
-                    &all_vowels(),
-                    "Vokal",
-                    "unknown_vowel_in_word_final_only",
-                    "word_final_only",
-                    |cluster_idx, phoneme_idx| {
-                        format!("invalid_word_final_phoneme_{}_{}", cluster_idx, phoneme_idx)
-                    },
-                ) {
-                    errors.merge(e);
-                }
-                for element in &self.allowed_diphthongs {
-                    let temp = AllowedCluster {
-                        phonemes: vec![element.first.clone(), element.second.clone()],
-                        weight: element.weight,
-                    };
-                    self.word_final_only.push(temp);
-                }
-                for element in &self.allowed_triphthongs {
-                    let temp = AllowedCluster {
-                        phonemes: vec![
-                            element.first.clone(),
-                            element.second.clone(),
-                            element.third.clone(),
-                        ],
-                        weight: element.weight,
-                    };
-                    self.word_final_only.push(temp);
-                }
-            }
-            [true, true, false, true, true] => {
-                if let Err(e) = validate_triphthongs_against_list(
-                    &self.allowed_triphthongs,
-                    &all_vowels(),
-                    "Triphthongs",
-                    "unknown_triphthong",
-                ) {
-                    errors.merge(e);
-                }
-                for element in &self.allowed_triphthongs {
-                    let temp = AllowedCluster {
-                        phonemes: vec![
-                            element.first.clone(),
-                            element.second.clone(),
-                            element.third.clone(),
-                        ],
-                        weight: element.weight,
-                    };
-                    self.word_initial_only.push(temp.clone());
-                    self.word_final_only.push(temp);
-                }
-            }
-            [true, true, false, false, true] => {
-                if let Err(e) = validate_triphthongs_against_list(
-                    &self.allowed_triphthongs,
-                    &all_vowels(),
-                    "Triphthongs",
-                    "unknown_triphthong",
-                ) {
-                    errors.merge(e);
-                }
-                if let Err(e) = validate_clusters_against_list_with_error_key(
-                    &self.word_initial_only,
-                    &all_vowels(),
-                    "Vokal",
-                    "unknown_vowel_in_word_initial_only",
-                    "word_initial_only",
-                    |cluster_idx, phoneme_idx| {
-                        format!(
-                            "invalid_word_initial_phoneme_{}_{}",
-                            cluster_idx, phoneme_idx
-                        )
-                    },
-                ) {
-                    errors.merge(e);
-                }
-                for element in &self.allowed_triphthongs {
-                    let temp = AllowedCluster {
-                        phonemes: vec![
-                            element.first.clone(),
-                            element.second.clone(),
-                            element.third.clone(),
-                        ],
-                        weight: element.weight,
-                    };
-                    self.word_initial_only.push(temp);
-                }
-            }
-            [true, true, false, true, false] => {
-                if let Err(e) = validate_triphthongs_against_list(
-                    &self.allowed_triphthongs,
-                    &all_vowels(),
-                    "Triphthongs",
-                    "unknown_triphthong",
-                ) {
-                    errors.merge(e);
-                }
-                if let Err(e) = validate_clusters_against_list_with_error_key(
-                    &self.word_final_only,
-                    &all_vowels(),
-                    "Vokal",
-                    "unknown_vowel_in_word_final_only",
-                    "word_final_only",
-                    |cluster_idx, phoneme_idx| {
-                        format!("invalid_word_final_phoneme_{}_{}", cluster_idx, phoneme_idx)
-                    },
-                ) {
-                    errors.merge(e);
-                }
-                for element in &self.allowed_triphthongs {
-                    let temp = AllowedCluster {
-                        phonemes: vec![
-                            element.first.clone(),
-                            element.second.clone(),
-                            element.third.clone(),
-                        ],
-                        weight: element.weight,
-                    };
-                    self.word_final_only.push(temp);
-                }
-            }
-            [false, false, false, true, true] => {
-                if let Err(e) = validate_phonemes_against_list(
-                    &self.allowed_phonemes,
-                    &all_vowels(),
-                    "Vokal",
-                    "unknown_vowel",
-                ) {
-                    errors.merge(e);
-                }
-                if let Err(e) = validate_diphthongs_against_list(
-                    &self.allowed_diphthongs,
-                    &all_vowels(),
-                    "Diphthong",
-                    "unknown_diphthong",
-                ) {
-                    errors.merge(e);
-                }
-                if let Err(e) = validate_triphthongs_against_list(
-                    &self.allowed_triphthongs,
-                    &all_vowels(),
-                    "Triphthongs",
-                    "unknown_triphthong",
-                ) {
-                    errors.merge(e);
-                }
-                for element in &self.allowed_phonemes {
-                    let temp = AllowedCluster {
-                        phonemes: vec![element.phoneme.clone()],
-                        weight: element.weight,
-                    };
-                    self.word_initial_only.push(temp.clone());
-                    self.word_final_only.push(temp);
-                }
-                for element in &self.allowed_diphthongs {
-                    let temp = AllowedCluster {
-                        phonemes: vec![element.first.clone(), element.second.clone()],
-                        weight: element.weight,
-                    };
-                    self.word_initial_only.push(temp.clone());
-                    self.word_final_only.push(temp);
-                }
-                for element in &self.allowed_triphthongs {
-                    let temp = AllowedCluster {
-                        phonemes: vec![
-                            element.first.clone(),
-                            element.second.clone(),
-                            element.third.clone(),
-                        ],
-                        weight: element.weight,
-                    };
-                    self.word_initial_only.push(temp.clone());
-                    self.word_final_only.push(temp);
-                }
-            }
-            [false, false, false, false, true] => {
-                if let Err(e) = validate_phonemes_against_list(
-                    &self.allowed_phonemes,
-                    &all_vowels(),
-                    "Vokal",
-                    "unknown_vowel",
-                ) {
-                    errors.merge(e);
-                }
-                if let Err(e) = validate_diphthongs_against_list(
-                    &self.allowed_diphthongs,
-                    &all_vowels(),
-                    "Diphthong",
-                    "unknown_diphthong",
-                ) {
-                    errors.merge(e);
-                }
-                if let Err(e) = validate_triphthongs_against_list(
-                    &self.allowed_triphthongs,
-                    &all_vowels(),
-                    "Triphthongs",
-                    "unknown_triphthong",
-                ) {
-                    errors.merge(e);
-                }
-                if let Err(e) = validate_clusters_against_list_with_error_key(
-                    &self.word_initial_only,
-                    &all_vowels(),
-                    "Vokal",
-                    "unknown_vowel_in_word_initial_only",
-                    "word_initial_only",
-                    |cluster_idx, phoneme_idx| {
-                        format!(
-                            "invalid_word_initial_phoneme_{}_{}",
-                            cluster_idx, phoneme_idx
-                        )
-                    },
-                ) {
-                    errors.merge(e);
-                }
-                for element in &self.allowed_phonemes {
-                    let temp = AllowedCluster {
-                        phonemes: vec![element.phoneme.clone()],
-                        weight: element.weight,
-                    };
-                    self.word_initial_only.push(temp);
-                }
-                for element in &self.allowed_diphthongs {
-                    let temp = AllowedCluster {
-                        phonemes: vec![element.first.clone(), element.second.clone()],
-                        weight: element.weight,
-                    };
-                    self.word_initial_only.push(temp);
-                }
-                for element in &self.allowed_triphthongs {
-                    let temp = AllowedCluster {
-                        phonemes: vec![
-                            element.first.clone(),
-                            element.second.clone(),
-                            element.third.clone(),
-                        ],
-                        weight: element.weight,
-                    };
-                    self.word_initial_only.push(temp);
-                }
-            }
-            [false, false, false, true, false] => {
-                if let Err(e) = validate_phonemes_against_list(
-                    &self.allowed_phonemes,
-                    &all_vowels(),
-                    "Vokal",
-                    "unknown_vowel",
-                ) {
-                    errors.merge(e);
-                }
-                if let Err(e) = validate_diphthongs_against_list(
-                    &self.allowed_diphthongs,
-                    &all_vowels(),
-                    "Diphthong",
-                    "unknown_diphthong",
-                ) {
-                    errors.merge(e);
-                }
-                if let Err(e) = validate_triphthongs_against_list(
-                    &self.allowed_triphthongs,
-                    &all_vowels(),
-                    "Triphthongs",
-                    "unknown_triphthong",
-                ) {
-                    errors.merge(e);
-                }
-                if let Err(e) = validate_clusters_against_list_with_error_key(
-                    &self.word_final_only,
-                    &all_vowels(),
-                    "Vokal",
-                    "unknown_vowel_in_word_final_only",
-                    "word_final_only",
-                    |cluster_idx, phoneme_idx| {
-                        format!("invalid_word_final_phoneme_{}_{}", cluster_idx, phoneme_idx)
-                    },
-                ) {
-                    errors.merge(e);
-                }
-                for element in &self.allowed_phonemes {
-                    let temp = AllowedCluster {
-                        phonemes: vec![element.phoneme.clone()],
-                        weight: element.weight,
-                    };
-                    self.word_final_only.push(temp);
-                }
-                for element in &self.allowed_diphthongs {
-                    let temp = AllowedCluster {
-                        phonemes: vec![element.first.clone(), element.second.clone()],
-                        weight: element.weight,
-                    };
-                    self.word_final_only.push(temp);
-                }
-                for element in &self.allowed_triphthongs {
-                    let temp = AllowedCluster {
-                        phonemes: vec![
-                            element.first.clone(),
-                            element.second.clone(),
-                            element.third.clone(),
-                        ],
-                        weight: element.weight,
-                    };
-                    self.word_final_only.push(temp);
-                }
-            }
-            [true, false, false, false, false] => {
-                if let Err(e) = validate_triphthongs_against_list(
-                    &self.allowed_triphthongs,
-                    &all_vowels(),
-                    "Triphthongs",
-                    "unknown_triphthong",
-                ) {
-                    errors.merge(e);
-                }
-                if let Err(e) = validate_clusters_against_list_with_error_key(
-                    &self.word_initial_only,
-                    &all_vowels(),
-                    "Vokal",
-                    "unknown_vowel_in_word_initial_only",
-                    "word_initial_only",
-                    |cluster_idx, phoneme_idx| {
-                        format!(
-                            "invalid_word_initial_phoneme_{}_{}",
-                            cluster_idx, phoneme_idx
-                        )
-                    },
-                ) {
-                    errors.merge(e);
-                }
-                if let Err(e) = validate_clusters_against_list_with_error_key(
-                    &self.word_final_only,
-                    &all_vowels(),
-                    "Vokal",
-                    "unknown_vowel_in_word_final_only",
-                    "word_final_only",
-                    |cluster_idx, phoneme_idx| {
-                        format!("invalid_word_final_phoneme_{}_{}", cluster_idx, phoneme_idx)
-                    },
-                ) {
-                    errors.merge(e);
-                }
-            }
-            [false, true, false, false, false] => {
-                if let Err(e) = validate_phonemes_against_list(
-                    &self.allowed_phonemes,
-                    &all_vowels(),
-                    "Vokal",
-                    "unknown_vowel",
-                ) {
-                    errors.merge(e);
-                }
-                if let Err(e) = validate_triphthongs_against_list(
-                    &self.allowed_triphthongs,
-                    &all_vowels(),
-                    "Triphthongs",
-                    "unknown_triphthong",
-                ) {
-                    errors.merge(e);
-                }
-                if let Err(e) = validate_clusters_against_list_with_error_key(
-                    &self.word_initial_only,
-                    &all_vowels(),
-                    "Vokal",
-                    "unknown_vowel_in_word_initial_only",
-                    "word_initial_only",
-                    |cluster_idx, phoneme_idx| {
-                        format!(
-                            "invalid_word_initial_phoneme_{}_{}",
-                            cluster_idx, phoneme_idx
-                        )
-                    },
-                ) {
-                    errors.merge(e);
-                }
-                if let Err(e) = validate_clusters_against_list_with_error_key(
-                    &self.word_final_only,
-                    &all_vowels(),
-                    "Vokal",
-                    "unknown_vowel_in_word_final_only",
-                    "word_final_only",
-                    |cluster_idx, phoneme_idx| {
-                        format!("invalid_word_final_phoneme_{}_{}", cluster_idx, phoneme_idx)
-                    },
-                ) {
-                    errors.merge(e);
-                }
-            }
-            [false, false, true, false, false] => {
+            // allowed_phonemes_and_diphthongs
+            0b001 => {
                 if let Err(e) = validate_phonemes_against_list(
                     &self.allowed_phonemes,
                     &all_vowels(),
@@ -967,147 +244,284 @@ impl NucleusConfiguration {
                     errors.merge(e);
                 }
 
-                if let Err(e) = validate_clusters_against_list_with_error_key(
-                    &self.word_initial_only,
-                    &all_vowels(),
-                    "Vokal",
-                    "unknown_vowel_in_word_initial_only",
-                    "word_initial_only",
-                    |cluster_idx, phoneme_idx| {
-                        format!(
-                            "invalid_word_initial_phoneme_{}_{}",
-                            cluster_idx, phoneme_idx
-                        )
-                    },
-                ) {
+                if let Err(e) = self.validate_word_mask(word_mask) {
                     errors.merge(e);
                 }
-                if let Err(e) = validate_clusters_against_list_with_error_key(
-                    &self.word_final_only,
-                    &all_vowels(),
-                    "Vokal",
-                    "unknown_vowel_in_word_final_only",
-                    "word_final_only",
-                    |cluster_idx, phoneme_idx| {
-                        format!("invalid_word_final_phoneme_{}_{}", cluster_idx, phoneme_idx)
-                    },
-                ) {
-                    errors.merge(e);
+
+                match word_mask {
+                    0b11 => {
+                        let clusters: Vec<AllowedCluster> = self
+                            .allowed_phonemes
+                            .iter()
+                            .map(|element| AllowedCluster {
+                                phonemes: vec![element.phoneme.clone()],
+                                weight: element.weight,
+                            })
+                            .collect();
+
+                        self.word_initial_only.extend(clusters.clone());
+                        self.word_final_only.extend(clusters);
+
+                        let clusters: Vec<AllowedCluster> = self
+                            .allowed_diphthongs
+                            .iter()
+                            .map(|element| AllowedCluster {
+                                phonemes: vec![element.first.clone(), element.second.clone()],
+                                weight: element.weight,
+                            })
+                            .collect();
+
+                        self.word_initial_only.extend(clusters.clone());
+                        self.word_final_only.extend(clusters);
+                    }
+
+                    0b01 => {
+                        self.word_final_only
+                            .extend(self.allowed_phonemes.iter().map(|element| AllowedCluster {
+                                phonemes: vec![element.phoneme.clone()],
+                                weight: element.weight,
+                            }));
+                        self.word_final_only
+                            .extend(
+                                self.allowed_diphthongs
+                                    .iter()
+                                    .map(|element| AllowedCluster {
+                                        phonemes: vec![
+                                            element.first.clone(),
+                                            element.second.clone(),
+                                        ],
+                                        weight: element.weight,
+                                    }),
+                            );
+                    }
+
+                    0b10 => {
+                        self.word_initial_only
+                            .extend(self.allowed_phonemes.iter().map(|element| AllowedCluster {
+                                phonemes: vec![element.phoneme.clone()],
+                                weight: element.weight,
+                            }));
+                        self.word_initial_only
+                            .extend(
+                                self.allowed_diphthongs
+                                    .iter()
+                                    .map(|element| AllowedCluster {
+                                        phonemes: vec![
+                                            element.first.clone(),
+                                            element.second.clone(),
+                                        ],
+                                        weight: element.weight,
+                                    }),
+                            );
+                    }
+
+                    _ => unreachable!(),
                 }
             }
-            [true, true, false, false, false] => {
+            // allowed_phonemes_and_triphthongs
+            0b010 => {
+                if let Err(e) = validate_phonemes_against_list(
+                    &self.allowed_phonemes,
+                    &all_vowels(),
+                    "Vokal",
+                    "unknown_vowel",
+                ) {
+                    errors.merge(e);
+                }
                 if let Err(e) = validate_triphthongs_against_list(
                     &self.allowed_triphthongs,
                     &all_vowels(),
                     "Triphthongs",
                     "unknown_triphthong",
-                ) {
-                    errors.merge(e);
-                }
-                if let Err(e) = validate_clusters_against_list_with_error_key(
-                    &self.word_initial_only,
-                    &all_vowels(),
-                    "Vokal",
-                    "unknown_vowel_in_word_initial_only",
-                    "word_initial_only",
-                    |cluster_idx, phoneme_idx| {
-                        format!(
-                            "invalid_word_initial_phoneme_{}_{}",
-                            cluster_idx, phoneme_idx
-                        )
-                    },
-                ) {
-                    errors.merge(e);
-                }
-                if let Err(e) = validate_clusters_against_list_with_error_key(
-                    &self.word_final_only,
-                    &all_vowels(),
-                    "Vokal",
-                    "unknown_vowel_in_word_final_only",
-                    "word_final_only",
-                    |cluster_idx, phoneme_idx| {
-                        format!("invalid_word_final_phoneme_{}_{}", cluster_idx, phoneme_idx)
-                    },
-                ) {
-                    errors.merge(e);
-                }
-            }
-            [true, false, true, false, false] => {
-                if let Err(e) = validate_diphthongs_against_list(
-                    &self.allowed_diphthongs,
-                    &all_vowels(),
-                    "Diphthong",
-                    "unknown_diphthong",
                 ) {
                     errors.merge(e);
                 }
 
-                if let Err(e) = validate_clusters_against_list_with_error_key(
-                    &self.word_initial_only,
-                    &all_vowels(),
-                    "Vokal",
-                    "unknown_vowel_in_word_initial_only",
-                    "word_initial_only",
-                    |cluster_idx, phoneme_idx| {
-                        format!(
-                            "invalid_word_initial_phoneme_{}_{}",
-                            cluster_idx, phoneme_idx
-                        )
-                    },
-                ) {
+                if let Err(e) = self.validate_word_mask(word_mask) {
                     errors.merge(e);
                 }
-                if let Err(e) = validate_clusters_against_list_with_error_key(
-                    &self.word_final_only,
-                    &all_vowels(),
-                    "Vokal",
-                    "unknown_vowel_in_word_final_only",
-                    "word_final_only",
-                    |cluster_idx, phoneme_idx| {
-                        format!("invalid_word_final_phoneme_{}_{}", cluster_idx, phoneme_idx)
-                    },
-                ) {
-                    errors.merge(e);
+
+                match word_mask {
+                    0b11 => {
+                        let clusters: Vec<AllowedCluster> = self
+                            .allowed_phonemes
+                            .iter()
+                            .map(|element| AllowedCluster {
+                                phonemes: vec![element.phoneme.clone()],
+                                weight: element.weight,
+                            })
+                            .collect();
+
+                        self.word_initial_only.extend(clusters.clone());
+                        self.word_final_only.extend(clusters);
+
+                        let clusters: Vec<AllowedCluster> = self
+                            .allowed_triphthongs
+                            .iter()
+                            .map(|element| AllowedCluster {
+                                phonemes: vec![
+                                    element.first.clone(),
+                                    element.second.clone(),
+                                    element.third.clone(),
+                                ],
+                                weight: element.weight,
+                            })
+                            .collect();
+
+                        self.word_initial_only.extend(clusters.clone());
+                        self.word_final_only.extend(clusters);
+                    }
+
+                    0b01 => {
+                        self.word_final_only
+                            .extend(self.allowed_phonemes.iter().map(|element| AllowedCluster {
+                                phonemes: vec![element.phoneme.clone()],
+                                weight: element.weight,
+                            }));
+                        self.word_final_only
+                            .extend(self.allowed_triphthongs.iter().map(|element| {
+                                AllowedCluster {
+                                    phonemes: vec![
+                                        element.first.clone(),
+                                        element.second.clone(),
+                                        element.third.clone(),
+                                    ],
+                                    weight: element.weight,
+                                }
+                            }));
+                    }
+
+                    0b10 => {
+                        self.word_initial_only
+                            .extend(self.allowed_phonemes.iter().map(|element| AllowedCluster {
+                                phonemes: vec![element.phoneme.clone()],
+                                weight: element.weight,
+                            }));
+                        self.word_initial_only
+                            .extend(self.allowed_triphthongs.iter().map(|element| {
+                                AllowedCluster {
+                                    phonemes: vec![
+                                        element.first.clone(),
+                                        element.second.clone(),
+                                        element.third.clone(),
+                                    ],
+                                    weight: element.weight,
+                                }
+                            }));
+                    }
+
+                    _ => unreachable!(),
                 }
             }
-            [false, true, true, false, false] => {
-                if let Err(e) = validate_phonemes_against_list(
-                    &self.allowed_phonemes,
+            // allowed_diphthongs_and_triphthongs
+            0b100 => {
+                if let Err(e) = validate_diphthongs_against_list(
+                    &self.allowed_diphthongs,
                     &all_vowels(),
-                    "Vokal",
-                    "unknown_vowel",
+                    "Diphthong",
+                    "unknown_diphthong",
                 ) {
                     errors.merge(e);
                 }
-                if let Err(e) = validate_clusters_against_list_with_error_key(
-                    &self.word_initial_only,
+                if let Err(e) = validate_triphthongs_against_list(
+                    &self.allowed_triphthongs,
                     &all_vowels(),
-                    "Vokal",
-                    "unknown_vowel_in_word_initial_only",
-                    "word_initial_only",
-                    |cluster_idx, phoneme_idx| {
-                        format!(
-                            "invalid_word_initial_phoneme_{}_{}",
-                            cluster_idx, phoneme_idx
-                        )
-                    },
+                    "Triphthongs",
+                    "unknown_triphthong",
                 ) {
                     errors.merge(e);
                 }
-                if let Err(e) = validate_clusters_against_list_with_error_key(
-                    &self.word_final_only,
-                    &all_vowels(),
-                    "Vokal",
-                    "unknown_vowel_in_word_final_only",
-                    "word_final_only",
-                    |cluster_idx, phoneme_idx| {
-                        format!("invalid_word_final_phoneme_{}_{}", cluster_idx, phoneme_idx)
-                    },
-                ) {
+                if let Err(e) = self.validate_word_mask(word_mask) {
                     errors.merge(e);
+                }
+                match word_mask {
+                    0b11 => {
+                        let clusters: Vec<AllowedCluster> = self
+                            .allowed_diphthongs
+                            .iter()
+                            .map(|element| AllowedCluster {
+                                phonemes: vec![element.first.clone(), element.second.clone()],
+                                weight: element.weight,
+                            })
+                            .collect();
+
+                        self.word_initial_only.extend(clusters.clone());
+                        self.word_final_only.extend(clusters);
+
+                        let clusters: Vec<AllowedCluster> = self
+                            .allowed_triphthongs
+                            .iter()
+                            .map(|element| AllowedCluster {
+                                phonemes: vec![
+                                    element.first.clone(),
+                                    element.second.clone(),
+                                    element.third.clone(),
+                                ],
+                                weight: element.weight,
+                            })
+                            .collect();
+
+                        self.word_initial_only.extend(clusters.clone());
+                        self.word_final_only.extend(clusters);
+                    }
+
+                    0b01 => {
+                        self.word_final_only
+                            .extend(
+                                self.allowed_diphthongs
+                                    .iter()
+                                    .map(|element| AllowedCluster {
+                                        phonemes: vec![
+                                            element.first.clone(),
+                                            element.second.clone(),
+                                        ],
+                                        weight: element.weight,
+                                    }),
+                            );
+                        self.word_final_only
+                            .extend(self.allowed_triphthongs.iter().map(|element| {
+                                AllowedCluster {
+                                    phonemes: vec![
+                                        element.first.clone(),
+                                        element.second.clone(),
+                                        element.third.clone(),
+                                    ],
+                                    weight: element.weight,
+                                }
+                            }));
+                    }
+
+                    0b10 => {
+                        self.word_initial_only
+                            .extend(
+                                self.allowed_diphthongs
+                                    .iter()
+                                    .map(|element| AllowedCluster {
+                                        phonemes: vec![
+                                            element.first.clone(),
+                                            element.second.clone(),
+                                        ],
+                                        weight: element.weight,
+                                    }),
+                            );
+                        self.word_initial_only
+                            .extend(self.allowed_triphthongs.iter().map(|element| {
+                                AllowedCluster {
+                                    phonemes: vec![
+                                        element.first.clone(),
+                                        element.second.clone(),
+                                        element.third.clone(),
+                                    ],
+                                    weight: element.weight,
+                                }
+                            }));
+                    }
+
+                    _ => unreachable!(),
                 }
             }
-            [false, false, false, false, false] => {
+            // allowed_phonemes_and_diphthongs_and_triphthongs
+            0b000 => {
                 if let Err(e) = validate_phonemes_against_list(
                     &self.allowed_phonemes,
                     &all_vowels(),
@@ -1132,35 +546,122 @@ impl NucleusConfiguration {
                 ) {
                     errors.merge(e);
                 }
-                if let Err(e) = validate_clusters_against_list_with_error_key(
-                    &self.word_initial_only,
-                    &all_vowels(),
-                    "Vokal",
-                    "unknown_vowel_in_word_initial_only",
-                    "word_initial_only",
-                    |cluster_idx, phoneme_idx| {
-                        format!(
-                            "invalid_word_initial_phoneme_{}_{}",
-                            cluster_idx, phoneme_idx
-                        )
-                    },
-                ) {
+
+                if let Err(e) = self.validate_word_mask(word_mask) {
                     errors.merge(e);
                 }
-                if let Err(e) = validate_clusters_against_list_with_error_key(
-                    &self.word_final_only,
-                    &all_vowels(),
-                    "Vokal",
-                    "unknown_vowel_in_word_final_only",
-                    "word_final_only",
-                    |cluster_idx, phoneme_idx| {
-                        format!("invalid_word_final_phoneme_{}_{}", cluster_idx, phoneme_idx)
-                    },
-                ) {
-                    errors.merge(e);
+
+                match word_mask {
+                    0b11 => {
+                        let clusters: Vec<AllowedCluster> = self
+                            .allowed_phonemes
+                            .iter()
+                            .map(|element| AllowedCluster {
+                                phonemes: vec![element.phoneme.clone()],
+                                weight: element.weight,
+                            })
+                            .collect();
+
+                        self.word_initial_only.extend(clusters.clone());
+                        self.word_final_only.extend(clusters);
+
+                        let clusters: Vec<AllowedCluster> = self
+                            .allowed_diphthongs
+                            .iter()
+                            .map(|element| AllowedCluster {
+                                phonemes: vec![element.first.clone(), element.second.clone()],
+                                weight: element.weight,
+                            })
+                            .collect();
+
+                        self.word_initial_only.extend(clusters.clone());
+                        self.word_final_only.extend(clusters);
+
+                        let clusters: Vec<AllowedCluster> = self
+                            .allowed_triphthongs
+                            .iter()
+                            .map(|element| AllowedCluster {
+                                phonemes: vec![
+                                    element.first.clone(),
+                                    element.second.clone(),
+                                    element.third.clone(),
+                                ],
+                                weight: element.weight,
+                            })
+                            .collect();
+
+                        self.word_initial_only.extend(clusters.clone());
+                        self.word_final_only.extend(clusters);
+                    }
+
+                    0b01 => {
+                        self.word_final_only
+                            .extend(self.allowed_phonemes.iter().map(|element| AllowedCluster {
+                                phonemes: vec![element.phoneme.clone()],
+                                weight: element.weight,
+                            }));
+                        self.word_final_only
+                            .extend(
+                                self.allowed_diphthongs
+                                    .iter()
+                                    .map(|element| AllowedCluster {
+                                        phonemes: vec![
+                                            element.first.clone(),
+                                            element.second.clone(),
+                                        ],
+                                        weight: element.weight,
+                                    }),
+                            );
+                        self.word_final_only
+                            .extend(self.allowed_triphthongs.iter().map(|element| {
+                                AllowedCluster {
+                                    phonemes: vec![
+                                        element.first.clone(),
+                                        element.second.clone(),
+                                        element.third.clone(),
+                                    ],
+                                    weight: element.weight,
+                                }
+                            }));
+                    }
+
+                    0b10 => {
+                        self.word_initial_only
+                            .extend(self.allowed_phonemes.iter().map(|element| AllowedCluster {
+                                phonemes: vec![element.phoneme.clone()],
+                                weight: element.weight,
+                            }));
+                        self.word_initial_only
+                            .extend(
+                                self.allowed_diphthongs
+                                    .iter()
+                                    .map(|element| AllowedCluster {
+                                        phonemes: vec![
+                                            element.first.clone(),
+                                            element.second.clone(),
+                                        ],
+                                        weight: element.weight,
+                                    }),
+                            );
+                        self.word_initial_only
+                            .extend(self.allowed_triphthongs.iter().map(|element| {
+                                AllowedCluster {
+                                    phonemes: vec![
+                                        element.first.clone(),
+                                        element.second.clone(),
+                                        element.third.clone(),
+                                    ],
+                                    weight: element.weight,
+                                }
+                            }));
+                    }
+
+                    _ => unreachable!(),
                 }
             }
+            8..=u8::MAX => unreachable!(),
         }
+
         if errors.is_empty() {
             Ok(self.clone())
         } else {
@@ -1184,7 +685,7 @@ impl NucleusConfiguration {
         for phoneme in &self.allowed_phonemes {
             if !available_vowels.iter().any(|c| c == &phoneme.phoneme) {
                 let suggestions =
-                    generate_phoneme_suggestions(&phoneme.phoneme, &available_vowels, 3);
+                    create_phoneme_suggestions(&phoneme.phoneme, &available_vowels, 3);
                 let error = create_phoneme_validation_error(
                     &phoneme.phoneme,
                     &suggestions,
@@ -1199,8 +700,7 @@ impl NucleusConfiguration {
 
         for (cluster_idx, cluster) in self.allowed_diphthongs.iter().enumerate() {
             if !available_vowels.iter().any(|c| c == &cluster.first) {
-                let suggestions =
-                    generate_phoneme_suggestions(&cluster.first, &available_vowels, 3);
+                let suggestions = create_phoneme_suggestions(&cluster.first, &available_vowels, 3);
                 let error = create_phoneme_validation_error(
                     &cluster.first,
                     &suggestions,
@@ -1213,8 +713,7 @@ impl NucleusConfiguration {
             }
 
             if !available_vowels.iter().any(|c| c == &cluster.second) {
-                let suggestions =
-                    generate_phoneme_suggestions(&cluster.second, &available_vowels, 3);
+                let suggestions = create_phoneme_suggestions(&cluster.second, &available_vowels, 3);
                 let error = create_phoneme_validation_error(
                     &cluster.second,
                     &suggestions,
@@ -1228,8 +727,7 @@ impl NucleusConfiguration {
         }
         for (cluster_idx, cluster) in self.allowed_triphthongs.iter().enumerate() {
             if !available_vowels.iter().any(|c| c == &cluster.first) {
-                let suggestions =
-                    generate_phoneme_suggestions(&cluster.first, &available_vowels, 3);
+                let suggestions = create_phoneme_suggestions(&cluster.first, &available_vowels, 3);
                 let error = create_phoneme_validation_error(
                     &cluster.first,
                     &suggestions,
@@ -1242,8 +740,7 @@ impl NucleusConfiguration {
             }
 
             if !available_vowels.iter().any(|c| c == &cluster.second) {
-                let suggestions =
-                    generate_phoneme_suggestions(&cluster.second, &available_vowels, 3);
+                let suggestions = create_phoneme_suggestions(&cluster.second, &available_vowels, 3);
                 let error = create_phoneme_validation_error(
                     &cluster.second,
                     &suggestions,
@@ -1256,8 +753,7 @@ impl NucleusConfiguration {
             }
 
             if !available_vowels.iter().any(|c| c == &cluster.third) {
-                let suggestions =
-                    generate_phoneme_suggestions(&cluster.third, &available_vowels, 3);
+                let suggestions = create_phoneme_suggestions(&cluster.third, &available_vowels, 3);
                 let error = create_phoneme_validation_error(
                     &cluster.third,
                     &suggestions,
@@ -1274,7 +770,7 @@ impl NucleusConfiguration {
         for (cluster_idx, cluster) in self.word_initial_only.iter().enumerate() {
             for (phoneme_idx, phoneme) in cluster.phonemes.iter().enumerate() {
                 if !available_vowels.iter().any(|c| c == phoneme) {
-                    let suggestions = generate_phoneme_suggestions(phoneme, &available_vowels, 3);
+                    let suggestions = create_phoneme_suggestions(phoneme, &available_vowels, 3);
                     let error = create_phoneme_validation_error(
                         phoneme,
                         &suggestions,
@@ -1294,7 +790,7 @@ impl NucleusConfiguration {
         for (cluster_idx, cluster) in self.word_final_only.iter().enumerate() {
             for (phoneme_idx, phoneme) in cluster.phonemes.iter().enumerate() {
                 if !available_vowels.iter().any(|c| c == phoneme) {
-                    let suggestions = generate_phoneme_suggestions(phoneme, &available_vowels, 3);
+                    let suggestions = create_phoneme_suggestions(phoneme, &available_vowels, 3);
                     let error = create_phoneme_validation_error(
                         phoneme,
                         &suggestions,
@@ -1311,6 +807,80 @@ impl NucleusConfiguration {
             }
         }
 
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
+    }
+
+    fn validate_word_mask(&self, word_mask: u8) -> Result<(), ValidationErrors> {
+        let mut errors = ValidationErrors::new();
+        match &word_mask {
+            0b00 => {
+                if let Err(e) = validate_clusters_against_list(
+                    &self.word_initial_only,
+                    &all_vowels(),
+                    "Vokal",
+                    "unknown_vowel_in_word_initial_only",
+                    "word_initial_only",
+                    Some(&|cluster_idx, phoneme_idx| {
+                        format!(
+                            "invalid_word_initial_phoneme_{}_{}",
+                            cluster_idx, phoneme_idx
+                        )
+                    }),
+                ) {
+                    errors.merge(e);
+                }
+                if let Err(e) = validate_clusters_against_list(
+                    &self.word_final_only,
+                    &all_vowels(),
+                    "Vokal",
+                    "unknown_vowel_in_word_final_only",
+                    "word_final_only",
+                    Some(&|cluster_idx, phoneme_idx| {
+                        format!("invalid_word_final_phoneme_{}_{}", cluster_idx, phoneme_idx)
+                    }),
+                ) {
+                    errors.merge(e);
+                }
+            }
+            0b01 => {
+                if let Err(e) = validate_clusters_against_list(
+                    &self.word_initial_only,
+                    &all_vowels(),
+                    "Vokal",
+                    "unknown_vowel_in_word_initial_only",
+                    "word_initial_only",
+                    Some(&|cluster_idx, phoneme_idx| {
+                        format!(
+                            "invalid_word_initial_phoneme_{}_{}",
+                            cluster_idx, phoneme_idx
+                        )
+                    }),
+                ) {
+                    errors.merge(e);
+                }
+            }
+            0b10 => {
+                if let Err(e) = validate_clusters_against_list(
+                    &self.word_final_only,
+                    &all_vowels(),
+                    "Vokal",
+                    "unknown_vowel_in_word_final_only",
+                    "word_final_only",
+                    Some(&|cluster_idx, phoneme_idx| {
+                        format!("invalid_word_final_phoneme_{}_{}", cluster_idx, phoneme_idx)
+                    }),
+                ) {
+                    errors.merge(e);
+                }
+            }
+            _ => {
+                // do nothing, no word initial or final clusters allowed
+            }
+        }
         if errors.is_empty() {
             Ok(())
         } else {

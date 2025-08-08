@@ -1,7 +1,7 @@
 use crate::validation::{ValidationError, ValidationErrors};
 
 // Utility functions for validation
-pub(crate) fn generate_phoneme_suggestions(
+pub(crate) fn create_phoneme_suggestions(
     attempted: &str,
     available: &[String],
     max_suggestions: usize,
@@ -89,7 +89,7 @@ pub(crate) fn validate_phonemes_against_list(
             let available_strings: Vec<String> =
                 available_phonemes.iter().map(|&s| s.to_string()).collect();
 
-            let suggestions = generate_phoneme_suggestions(&phoneme.phoneme, &available_strings, 3);
+            let suggestions = create_phoneme_suggestions(&phoneme.phoneme, &available_strings, 3);
             let error = create_phoneme_validation_error(
                 &phoneme.phoneme,
                 &suggestions,
@@ -115,30 +115,8 @@ pub(crate) fn validate_clusters_against_list(
     phoneme_type: &str, // "Konsonant" or "Vokal"
     error_prefix: &str,
     context_name: &str, // "Cluster", "word_initial_only", etc.
+    error_key_fn: Option<&dyn Fn(usize, usize) -> String>,
 ) -> Result<(), ValidationErrors> {
-    validate_clusters_against_list_with_error_key(
-        clusters,
-        available_phonemes,
-        phoneme_type,
-        error_prefix,
-        context_name,
-        |cluster_idx, phoneme_idx| {
-            format!("invalid_cluster_phoneme_{}_{}", cluster_idx, phoneme_idx)
-        },
-    )
-}
-
-pub(crate) fn validate_clusters_against_list_with_error_key<F>(
-    clusters: &[crate::phonology::phonemes::AllowedCluster],
-    available_phonemes: &[&str],
-    phoneme_type: &str, // "Konsonant" or "Vokal"
-    error_prefix: &str,
-    context_name: &str, // "Cluster", "word_initial_only", etc.
-    error_key_fn: F,
-) -> Result<(), ValidationErrors>
-where
-    F: Fn(usize, usize) -> String,
-{
     let mut errors = ValidationErrors::new();
 
     for (cluster_idx, cluster) in clusters.iter().enumerate() {
@@ -147,7 +125,7 @@ where
                 let available_strings: Vec<String> =
                     available_phonemes.iter().map(|&s| s.to_string()).collect();
 
-                let suggestions = generate_phoneme_suggestions(phoneme, &available_strings, 3);
+                let suggestions = create_phoneme_suggestions(phoneme, &available_strings, 3);
                 let error = create_phoneme_validation_error(
                     phoneme,
                     &suggestions,
@@ -155,7 +133,11 @@ where
                     phoneme_type,
                     Some((context_name, cluster_idx, phoneme_idx)),
                 );
-                let error_key = error_key_fn(cluster_idx, phoneme_idx);
+                let error_key = if let Some(f) = error_key_fn {
+                    f(cluster_idx, phoneme_idx)
+                } else {
+                    format!("invalid_cluster_phoneme_{}_{}", cluster_idx, phoneme_idx)
+                };
                 errors.add(error_key, error);
             }
         }
@@ -182,7 +164,7 @@ pub(crate) fn validate_diphthongs_against_list(
         if !available_vowels.iter().any(|&v| v == diphthong.first) {
             let available_strings: Vec<String> =
                 available_vowels.iter().map(|&s| s.to_string()).collect();
-            let suggestions = generate_phoneme_suggestions(&diphthong.first, &available_strings, 3);
+            let suggestions = create_phoneme_suggestions(&diphthong.first, &available_strings, 3);
             let error = create_phoneme_validation_error(
                 &diphthong.first,
                 &suggestions,
@@ -198,8 +180,7 @@ pub(crate) fn validate_diphthongs_against_list(
         if !available_vowels.iter().any(|&v| v == diphthong.second) {
             let available_strings: Vec<String> =
                 available_vowels.iter().map(|&s| s.to_string()).collect();
-            let suggestions =
-                generate_phoneme_suggestions(&diphthong.second, &available_strings, 3);
+            let suggestions = create_phoneme_suggestions(&diphthong.second, &available_strings, 3);
             let error = create_phoneme_validation_error(
                 &diphthong.second,
                 &suggestions,
@@ -232,8 +213,7 @@ pub(crate) fn validate_triphthongs_against_list(
         if !available_vowels.iter().any(|&v| v == triphthong.first) {
             let available_strings: Vec<String> =
                 available_vowels.iter().map(|&s| s.to_string()).collect();
-            let suggestions =
-                generate_phoneme_suggestions(&triphthong.first, &available_strings, 3);
+            let suggestions = create_phoneme_suggestions(&triphthong.first, &available_strings, 3);
             let error = create_phoneme_validation_error(
                 &triphthong.first,
                 &suggestions,
@@ -249,8 +229,7 @@ pub(crate) fn validate_triphthongs_against_list(
         if !available_vowels.iter().any(|&v| v == triphthong.second) {
             let available_strings: Vec<String> =
                 available_vowels.iter().map(|&s| s.to_string()).collect();
-            let suggestions =
-                generate_phoneme_suggestions(&triphthong.second, &available_strings, 3);
+            let suggestions = create_phoneme_suggestions(&triphthong.second, &available_strings, 3);
             let error = create_phoneme_validation_error(
                 &triphthong.second,
                 &suggestions,
@@ -266,8 +245,7 @@ pub(crate) fn validate_triphthongs_against_list(
         if !available_vowels.iter().any(|&v| v == triphthong.third) {
             let available_strings: Vec<String> =
                 available_vowels.iter().map(|&s| s.to_string()).collect();
-            let suggestions =
-                generate_phoneme_suggestions(&triphthong.third, &available_strings, 3);
+            let suggestions = create_phoneme_suggestions(&triphthong.third, &available_strings, 3);
             let error = create_phoneme_validation_error(
                 &triphthong.third,
                 &suggestions,

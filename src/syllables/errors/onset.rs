@@ -2,9 +2,8 @@ use crate::{
     phonology::{consonants::all_consonants, phonemes::AllowedCluster, PhonologyConfiguration},
     syllables::{
         errors::utilities::{
-            create_phoneme_validation_error, generate_phoneme_suggestions,
-            validate_clusters_against_list, validate_clusters_against_list_with_error_key,
-            validate_phonemes_against_list,
+            create_phoneme_suggestions, create_phoneme_validation_error,
+            validate_clusters_against_list, validate_phonemes_against_list,
         },
         onset::OnsetConfiguration,
     },
@@ -16,21 +15,27 @@ impl OnsetConfiguration {
         let mut errors = ValidationErrors::new();
 
         // checke with is empty
-        let empty_check = [
+        let allow_empty_check = [
             self.allowed_phonemes.is_empty(),
             self.allowed_clusters.is_empty(),
-            self.word_initial_only.is_empty(),
         ];
 
-        match empty_check {
-            [true, true, true] | [true, true, false] => {
+        let mask = allow_empty_check
+            .iter()
+            .enumerate()
+            .fold(0u8, |acc, (i, &b)| acc | ((b as u8) << i));
+
+        
+
+        match mask {
+            0b11 => {
                 errors.add(
                     "empty_onset",
                     ValidationError::new("empty_onset")
                         .with_message("Onset must contain at least one phoneme or cluster"),
                 );
             }
-            [false, true, true] => {
+            0b01 => {
                 if let Err(e) = validate_phonemes_against_list(
                     &self.allowed_phonemes,
                     &all_consonants(),
@@ -39,28 +44,65 @@ impl OnsetConfiguration {
                 ) {
                     errors.merge(e);
                 }
-                for element in &self.allowed_phonemes {
-                    let temp = AllowedCluster {
-                        phonemes: vec![element.phoneme.clone()],
-                        weight: element.weight,
-                    };
-                    self.word_initial_only.push(temp);
+
+                if self.word_initial_only.is_empty() {
+                    if let Err(e) = validate_clusters_against_list(
+                        &self.word_initial_only,
+                        &all_consonants(),
+                        "Konsonant",
+                        "unknown_consonant_in_word_initial_only",
+                        "word_initial_only",
+                        Some(&|cluster_idx, phoneme_idx| {
+                            format!(
+                                "invalid_word_initial_phoneme_{}_{}",
+                                cluster_idx, phoneme_idx
+                            )
+                        }),
+                    ) {
+                        errors.merge(e);
+                    }
+                    for element in &self.allowed_phonemes {
+                        let temp = AllowedCluster {
+                            phonemes: vec![element.phoneme.clone()],
+                            weight: element.weight,
+                        };
+                        self.word_initial_only.push(temp);
+                    }
                 }
             }
-            [true, false, true] => {
+            0b10 => {
                 if let Err(e) = validate_clusters_against_list(
                     &self.allowed_clusters,
                     &all_consonants(),
                     "Konsonant",
                     "unknown_consonant_in_cluster",
                     "Cluster",
+                    None,
                 ) {
                     errors.merge(e);
                 }
-                self.word_initial_only
-                    .append(&mut self.allowed_clusters.clone());
+
+                if self.word_initial_only.is_empty() {
+                    if let Err(e) = validate_clusters_against_list(
+                        &self.word_initial_only,
+                        &all_consonants(),
+                        "Konsonant",
+                        "unknown_consonant_in_word_initial_only",
+                        "word_initial_only",
+                        Some(&|cluster_idx, phoneme_idx| {
+                            format!(
+                                "invalid_word_initial_phoneme_{}_{}",
+                                cluster_idx, phoneme_idx
+                            )
+                        }),
+                    ) {
+                        errors.merge(e);
+                    }
+                    self.word_initial_only
+                        .append(&mut self.allowed_clusters.clone());
+                }
             }
-            [false, false, true] => {
+            0b00 => {
                 if let Err(e) = validate_phonemes_against_list(
                     &self.allowed_phonemes,
                     &all_consonants(),
@@ -76,55 +118,41 @@ impl OnsetConfiguration {
                     "Konsonant",
                     "unknown_consonant_in_cluster",
                     "Cluster",
+                    None,
                 ) {
                     errors.merge(e);
                 }
-                self.word_initial_only
-                    .append(&mut self.allowed_clusters.clone());
 
-                for element in &self.allowed_phonemes {
-                    let temp = AllowedCluster {
-                        phonemes: vec![element.phoneme.clone()],
-                        weight: element.weight,
-                    };
-                    self.word_initial_only.push(temp);
+                if self.word_initial_only.is_empty() {
+                    if let Err(e) = validate_clusters_against_list(
+                        &self.word_initial_only,
+                        &all_consonants(),
+                        "Konsonant",
+                        "unknown_consonant_in_word_initial_only",
+                        "word_initial_only",
+                        Some(&|cluster_idx, phoneme_idx| {
+                            format!(
+                                "invalid_word_initial_phoneme_{}_{}",
+                                cluster_idx, phoneme_idx
+                            )
+                        }),
+                    ) {
+                        errors.merge(e);
+                    }
+
+                    self.word_initial_only
+                        .append(&mut self.allowed_clusters.clone());
+
+                    for element in &self.allowed_phonemes {
+                        let temp = AllowedCluster {
+                            phonemes: vec![element.phoneme.clone()],
+                            weight: element.weight,
+                        };
+                        self.word_initial_only.push(temp);
+                    }
                 }
             }
-            [false, false, false] | [false, true, false] | [true, false, false] => {
-                // all three vectors are not empty, no error
-                if let Err(e) = validate_phonemes_against_list(
-                    &self.allowed_phonemes,
-                    &all_consonants(),
-                    "Konsonant",
-                    "unknown_consonant",
-                ) {
-                    errors.merge(e);
-                }
-                if let Err(e) = validate_clusters_against_list(
-                    &self.allowed_clusters,
-                    &all_consonants(),
-                    "Konsonant",
-                    "unknown_consonant_in_cluster",
-                    "Cluster",
-                ) {
-                    errors.merge(e);
-                }
-                if let Err(e) = validate_clusters_against_list_with_error_key(
-                    &self.word_initial_only,
-                    &all_consonants(),
-                    "Konsonant",
-                    "unknown_consonant_in_word_initial_only",
-                    "word_initial_only",
-                    |cluster_idx, phoneme_idx| {
-                        format!(
-                            "invalid_word_initial_phoneme_{}_{}",
-                            cluster_idx, phoneme_idx
-                        )
-                    },
-                ) {
-                    errors.merge(e);
-                }
-            }
+            _ => unreachable!(),
         }
 
         if errors.is_empty() {
@@ -151,7 +179,7 @@ impl OnsetConfiguration {
         for phoneme in &self.allowed_phonemes {
             if !available_consonants.iter().any(|c| c == &phoneme.phoneme) {
                 let suggestions =
-                    generate_phoneme_suggestions(&phoneme.phoneme, &available_consonants, 3);
+                    create_phoneme_suggestions(&phoneme.phoneme, &available_consonants, 3);
                 let error = create_phoneme_validation_error(
                     &phoneme.phoneme,
                     &suggestions,
@@ -168,8 +196,7 @@ impl OnsetConfiguration {
         for (cluster_idx, cluster) in self.allowed_clusters.iter().enumerate() {
             for (phoneme_idx, phoneme) in cluster.phonemes.iter().enumerate() {
                 if !available_consonants.iter().any(|c| c == phoneme) {
-                    let suggestions =
-                        generate_phoneme_suggestions(phoneme, &available_consonants, 3);
+                    let suggestions = create_phoneme_suggestions(phoneme, &available_consonants, 3);
                     let error = create_phoneme_validation_error(
                         phoneme,
                         &suggestions,
@@ -190,8 +217,7 @@ impl OnsetConfiguration {
         for (cluster_idx, cluster) in self.word_initial_only.iter().enumerate() {
             for (phoneme_idx, phoneme) in cluster.phonemes.iter().enumerate() {
                 if !available_consonants.iter().any(|c| c == phoneme) {
-                    let suggestions =
-                        generate_phoneme_suggestions(phoneme, &available_consonants, 3);
+                    let suggestions = create_phoneme_suggestions(phoneme, &available_consonants, 3);
                     let error = create_phoneme_validation_error(
                         phoneme,
                         &suggestions,

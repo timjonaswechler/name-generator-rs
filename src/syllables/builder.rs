@@ -5,7 +5,7 @@ use crate::{
         patterns::SyllablePattern, NoCoda, NoNucleus, NoOnset, SyllableConfiguration, WithCoda,
         WithNucleus, WithOnset,
     },
-    validation::ValidationErrors,
+    validation::{ValidationError, ValidationErrors},
 };
 
 impl SyllableConfiguration<NoOnset, NoNucleus, NoCoda> {
@@ -63,6 +63,13 @@ impl<O, C> SyllableConfiguration<O, NoNucleus, C> {
         word_final_only: Vec<AllowedCluster>,
     ) -> Result<SyllableConfiguration<O, WithNucleus, C>, ValidationErrors> {
         let mut errors = ValidationErrors::new();
+        if (&allowed_phonemes.len() + &allowed_diphthongs.len() + &allowed_triphthongs.len()) < 3 {
+            errors.add(
+                "no_enough_vowels",
+                ValidationError::new("phonology_not_enough_vowels")
+                    .with_message("The phonology must have at least three vowels."),
+            );
+        }
         let mut nucleus = NucleusConfiguration::new(
             allowed_phonemes,
             allowed_diphthongs,
@@ -70,6 +77,7 @@ impl<O, C> SyllableConfiguration<O, NoNucleus, C> {
             word_initial_only,
             word_final_only,
         );
+
         match nucleus.validate() {
             Ok(nucleus) => Ok(SyllableConfiguration {
                 patterns: self.patterns,

@@ -5,8 +5,10 @@ use serde::{Deserialize, Serialize};
 use crate::anatomy::speaker::SpeakerAnatomy;
 use crate::phonology::PhonologyConfiguration;
 
-use crate::syllables::{self, NoCoda, NoNucleus, NoOnset, SyllableConfiguration};
-use crate::validation::ValidationErrors;
+use crate::syllables::{
+    self, NoCoda, NoNucleus, NoOnset, SyllableConfiguration, WithCoda, WithNucleus, WithOnset,
+};
+use crate::validation::{ValidationError, ValidationErrors};
 
 use std::marker::PhantomData;
 
@@ -42,6 +44,7 @@ impl LanguageConfiguration<NoOnset, NoNucleus, NoCoda, NotInitialized> {
         }
     }
 }
+
 impl<OnsetState, NucleusState, CodaState>
     LanguageConfiguration<OnsetState, NucleusState, CodaState, Initializing>
 {
@@ -90,6 +93,14 @@ impl<OnsetState, NucleusState, CodaState>
             errors.merge(e);
         }
 
+        if phonology.vowels().len() < 3 {
+            errors.add(
+                "no_enough_vowels",
+                ValidationError::new("phonology_not_enough_vowels")
+                    .with_message("The phonology must have at least three vowels."),
+            );
+        }
+
         if errors.is_empty() {
             self.phonology = phonology;
             Ok(LanguageConfiguration {
@@ -105,11 +116,11 @@ impl<OnsetState, NucleusState, CodaState>
     }
 
     #[must_use]
-    pub fn set_syllables<NewOnsetState, NewNucleusState, NewCodaState>(
+    pub fn set_syllables(
         self,
-        syllables: SyllableConfiguration<NewOnsetState, NewNucleusState, NewCodaState>,
+        syllables: SyllableConfiguration<WithOnset, WithNucleus, WithCoda>,
     ) -> Result<
-        LanguageConfiguration<NewOnsetState, NewNucleusState, NewCodaState, Initializing>,
+        LanguageConfiguration<WithOnset, WithNucleus, WithCoda, Initializing>,
         ValidationErrors,
     > {
         let mut errors = ValidationErrors::new();
@@ -130,9 +141,7 @@ impl<OnsetState, NucleusState, CodaState>
     }
 }
 
-impl<OnsetState, NucleusState, CodaState, State>
-    LanguageConfiguration<OnsetState, NucleusState, CodaState, State>
-{
+impl LanguageConfiguration<WithOnset, WithNucleus, WithCoda, Initialized> {
     pub fn name(&self) -> &str {
         &self.name
     }
@@ -145,7 +154,7 @@ impl<OnsetState, NucleusState, CodaState, State>
         &self.phonology
     }
 
-    pub fn syllables(&self) -> &SyllableConfiguration<OnsetState, NucleusState, CodaState> {
+    pub fn syllables(&self) -> &SyllableConfiguration<WithOnset, WithNucleus, WithCoda> {
         &self.syllables
     }
 }
