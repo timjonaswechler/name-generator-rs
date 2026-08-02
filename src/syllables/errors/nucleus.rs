@@ -1,7 +1,5 @@
 use crate::{
-    phonology::{
-        all_vowels, consonants::all_consonants, phonemes::AllowedCluster, PhonologyConfiguration,
-    },
+    phonology::{all_vowels, phonemes::AllowedCluster, PhonologyConfiguration},
     syllables::{
         errors::utilities::{
             create_phoneme_suggestions, create_phoneme_validation_error,
@@ -27,7 +25,7 @@ impl NucleusConfiguration {
             .iter()
             .enumerate()
             .fold(0u8, |acc, (i, &b)| acc | ((b as u8) << i));
-        
+
         let word_empty_check = [
             self.word_initial_only.is_empty(),
             self.word_final_only.is_empty(),

@@ -13,17 +13,6 @@ use crate::{
 impl CodaConfiguration {
     pub fn validate(&mut self) -> Result<CodaConfiguration, ValidationErrors> {
         let mut errors = ValidationErrors::new();
-        // validate allowed phonemes and clusters
-        // - empty vector in cluster or phonemes is allowed not both
-        // - if word_initial_only is not empty, it must be a subset of allowed_clusters and allowed_phonemes
-        // - check if conntent is a valid phoneme string
-
-        // checke with is empty
-        let empty_check = [
-            self.allowed_phonemes.is_empty(),
-            self.allowed_clusters.is_empty(),
-            self.word_final_only.is_empty(),
-        ];
 
         // checke with is empty
         let allow_empty_check = [

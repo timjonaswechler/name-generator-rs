@@ -38,9 +38,9 @@ pub struct SyllableConfiguration<OnsetState = NoOnset, NucleusState = NoNucleus,
     pub onset: OnsetConfiguration,
     pub nucleus: NucleusConfiguration,
     pub coda: CodaConfiguration,
-    _onset_state: std::marker::PhantomData<OnsetState>,
-    _nucleus_state: std::marker::PhantomData<NucleusState>,
-    _coda_state: std::marker::PhantomData<CodaState>,
+    onset_state: std::marker::PhantomData<OnsetState>,
+    nucleus_state: std::marker::PhantomData<NucleusState>,
+    coda_state: std::marker::PhantomData<CodaState>,
 }
 
 /// Represents a complete syllable with all its components

@@ -25,8 +25,6 @@ impl OnsetConfiguration {
             .enumerate()
             .fold(0u8, |acc, (i, &b)| acc | ((b as u8) << i));
 
-        
-
         match mask {
             0b11 => {
                 errors.add(

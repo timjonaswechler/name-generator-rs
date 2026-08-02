@@ -15,9 +15,9 @@ impl SyllableConfiguration<NoOnset, NoNucleus, NoCoda> {
             onset: OnsetConfiguration::default(),
             nucleus: NucleusConfiguration::default(),
             coda: CodaConfiguration::default(),
-            _onset_state: std::marker::PhantomData,
-            _nucleus_state: std::marker::PhantomData,
-            _coda_state: std::marker::PhantomData,
+            onset_state: std::marker::PhantomData,
+            nucleus_state: std::marker::PhantomData,
+            coda_state: std::marker::PhantomData,
         }
     }
 }
@@ -40,9 +40,9 @@ impl<N, C> SyllableConfiguration<NoOnset, N, C> {
                 onset: onset,
                 nucleus: self.nucleus,
                 coda: self.coda,
-                _onset_state: std::marker::PhantomData,
-                _nucleus_state: std::marker::PhantomData,
-                _coda_state: std::marker::PhantomData,
+                onset_state: std::marker::PhantomData,
+                nucleus_state: std::marker::PhantomData,
+                coda_state: std::marker::PhantomData,
             }),
             Err(e) => {
                 errors.merge(e);
@@ -84,9 +84,9 @@ impl<O, C> SyllableConfiguration<O, NoNucleus, C> {
                 onset: self.onset,
                 nucleus,
                 coda: self.coda,
-                _onset_state: std::marker::PhantomData,
-                _nucleus_state: std::marker::PhantomData,
-                _coda_state: std::marker::PhantomData,
+                onset_state: std::marker::PhantomData,
+                nucleus_state: std::marker::PhantomData,
+                coda_state: std::marker::PhantomData,
             }),
             Err(e) => {
                 errors.merge(e);
@@ -113,9 +113,9 @@ impl<O, N> SyllableConfiguration<O, N, NoCoda> {
                 onset: self.onset,
                 nucleus: self.nucleus,
                 coda,
-                _onset_state: std::marker::PhantomData,
-                _nucleus_state: std::marker::PhantomData,
-                _coda_state: std::marker::PhantomData,
+                onset_state: std::marker::PhantomData,
+                nucleus_state: std::marker::PhantomData,
+                coda_state: std::marker::PhantomData,
             }),
             Err(e) => {
                 errors.merge(e);

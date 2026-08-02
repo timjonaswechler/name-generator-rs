@@ -31,9 +31,9 @@ impl<OnsetState, NucleusState, CodaState>
                 onset: self.onset.clone(),
                 nucleus: self.nucleus.clone(),
                 coda: self.coda.clone(),
-                _onset_state: std::marker::PhantomData,
-                _nucleus_state: std::marker::PhantomData,
-                _coda_state: std::marker::PhantomData,
+                onset_state: std::marker::PhantomData,
+                nucleus_state: std::marker::PhantomData,
+                coda_state: std::marker::PhantomData,
             })
         } else {
             Err(errors)

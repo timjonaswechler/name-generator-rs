@@ -19,7 +19,10 @@ pub trait ValidatePhoneme {
 
 /// Anatomical constraints validation trait  
 pub trait ValidateAnatomicalConstraints {
-    fn validate_anatomical_constraints(&self, anatomy: &crate::anatomy::speaker::SpeakerAnatomy) -> Result<(), ValidationErrors>;
+    fn validate_anatomical_constraints(
+        &self,
+        anatomy: &crate::anatomy::speaker::SpeakerAnatomy,
+    ) -> Result<(), ValidationErrors>;
 }
 
 /// Language profile validation trait
@@ -31,7 +34,11 @@ pub trait ValidateLanguageProfile {
 /// Syllable pattern validation trait
 pub trait ValidateSyllablePattern {
     fn validate_pattern(&self, pattern: &str) -> Result<(), ValidationErrors>;
-    fn validate_pattern_complexity(&self, pattern: &str, max_complexity: usize) -> Result<(), ValidationErrors>;
+    fn validate_pattern_complexity(
+        &self,
+        pattern: &str,
+        max_complexity: usize,
+    ) -> Result<(), ValidationErrors>;
 }
 
 /// Phonology configuration validation trait
@@ -90,9 +97,12 @@ mod tests {
                 Ok(())
             } else {
                 let mut errors = ValidationErrors::new();
-                errors.add("value", ValidationError::new("value_too_high")
-                    .add_param("value", self.value)
-                    .add_param("max_value", context.max_value));
+                errors.add(
+                    "value",
+                    ValidationError::new("value_too_high")
+                        .add_param("value", self.value)
+                        .add_param("max_value", context.max_value),
+                );
                 Err(errors)
             }
         }
@@ -102,7 +112,7 @@ mod tests {
     fn test_validate_with_context_trait() {
         let item = TestContextValidatable { value: 5 };
         let context = TestContext { max_value: 10 };
-        
+
         assert!(item.validate_with_context(&context).is_ok());
 
         let context_strict = TestContext { max_value: 3 };
