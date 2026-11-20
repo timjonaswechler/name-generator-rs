@@ -10,9 +10,7 @@ pub trait ValidateWithContext<C> {
     fn validate_with_context(&self, context: &C) -> Result<(), ValidationErrors>;
 }
 
-/// Domain-specific validation traits
-
-/// Phoneme validation trait
+/// Domain-specific validation for phonemes.
 pub trait ValidatePhoneme {
     fn validate_phoneme(&self, phoneme: &str) -> Result<(), ValidationErrors>;
 }

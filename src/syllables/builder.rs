@@ -1,152 +1,210 @@
-use crate::{
-    phonology::phonemes::{AllowedCluster, AllowedDiphthong, AllowedPhoneme, AllowedTriphthong},
-    syllables::{
-        coda::CodaConfiguration, nucleus::NucleusConfiguration, onset::OnsetConfiguration,
-        patterns::SyllablePattern, NoCoda, NoNucleus, NoOnset, SyllableConfiguration, WithCoda,
-        WithNucleus, WithOnset,
-    },
-    validation::{ValidationError, ValidationErrors},
-};
+use super::*;
+use crate::phonology::{LanguageInventory, SoundCatalog};
+use crate::validation::{ValidationError, ValidationErrors};
 
-impl SyllableConfiguration<NoOnset, NoNucleus, NoCoda> {
-    pub fn new() -> Self {
-        Self {
-            patterns: Vec::new(),
-            onset: OnsetConfiguration::default(),
-            nucleus: NucleusConfiguration::default(),
-            coda: CodaConfiguration::default(),
-            onset_state: std::marker::PhantomData,
-            nucleus_state: std::marker::PhantomData,
-            coda_state: std::marker::PhantomData,
-        }
-    }
+fn error(errors: &mut ValidationErrors, field: &str, code: &'static str) {
+    errors.add(field.to_owned(), ValidationError::new(code));
 }
-
-// Onset nur wenn noch nicht gesetzt
-impl<N, C> SyllableConfiguration<NoOnset, N, C> {
-    pub fn set_onset(
-        self,
-        allowed_phonemes: Vec<AllowedPhoneme>,
-        allowed_clusters: Vec<AllowedCluster>,
-        word_initial_only: Vec<AllowedCluster>,
-    ) -> Result<SyllableConfiguration<WithOnset, N, C>, ValidationErrors> {
+impl Phonotactics {
+    pub fn validate(
+        &self,
+        catalog: &SoundCatalog,
+        inventory: &LanguageInventory,
+    ) -> Result<(), ValidationErrors> {
         let mut errors = ValidationErrors::new();
-        let mut onset =
-            OnsetConfiguration::new(allowed_phonemes, allowed_clusters, word_initial_only);
-
-        match onset.validate() {
-            Ok(onset) => Ok(SyllableConfiguration {
-                patterns: self.patterns,
-                onset: onset,
-                nucleus: self.nucleus,
-                coda: self.coda,
-                onset_state: std::marker::PhantomData,
-                nucleus_state: std::marker::PhantomData,
-                coda_state: std::marker::PhantomData,
-            }),
-            Err(e) => {
-                errors.merge(e);
-                Err(errors)
+        if self.nucleus.presence != Presence::Required {
+            error(&mut errors, "nucleus", "nucleus_must_be_required");
+        }
+        for (name, rules, nucleus) in [
+            ("onset", &self.onset, false),
+            ("nucleus", &self.nucleus, true),
+            ("coda", &self.coda, false),
+        ] {
+            if rules.presence == Presence::Forbidden {
+                if !rules.choices.is_empty() {
+                    error(&mut errors, name, "forbidden_position_has_choices");
+                }
+            } else if !rules.choices.iter().any(|c| c.weight.is_enabled()) {
+                error(&mut errors, name, "position_has_no_enabled_choices");
+            }
+            for choice in &rules.choices {
+                if choice.sounds.is_empty() {
+                    error(&mut errors, name, "empty_sound_sequence");
+                }
+                if nucleus
+                    && !choice
+                        .sounds
+                        .iter()
+                        .any(|id| catalog.get(id).is_some_and(|sound| sound.can_be_nucleus()))
+                {
+                    error(&mut errors, name, "nucleus_sequence_requires_syllabic_core");
+                }
+                for id in &choice.sounds {
+                    if !inventory.contains(id) {
+                        error(&mut errors, name, "sound_not_in_inventory");
+                    }
+                    match catalog.get(id) {
+                        None => error(&mut errors, name, "unknown_sound"),
+                        Some(sound) => {
+                            let valid = if nucleus {
+                                !sound.is_consonant() || sound.can_be_nucleus()
+                            } else {
+                                sound.can_be_margin()
+                            };
+                            if !valid {
+                                error(&mut errors, name, "sound_not_valid_for_syllable_role");
+                            }
+                        }
+                    }
+                }
             }
         }
-    }
-}
-
-// Nucleus nur wenn noch nicht gesetzt
-impl<O, C> SyllableConfiguration<O, NoNucleus, C> {
-    pub fn set_nucleus(
-        self,
-        allowed_phonemes: Vec<AllowedPhoneme>,
-        allowed_diphthongs: Vec<AllowedDiphthong>,
-        allowed_triphthongs: Vec<AllowedTriphthong>,
-        word_initial_only: Vec<AllowedCluster>, // Nur am Wortanfang erlaubt
-        word_final_only: Vec<AllowedCluster>,
-    ) -> Result<SyllableConfiguration<O, WithNucleus, C>, ValidationErrors> {
-        let mut errors = ValidationErrors::new();
-        if (&allowed_phonemes.len() + &allowed_diphthongs.len() + &allowed_triphthongs.len()) < 3 {
-            errors.add(
-                "no_enough_vowels",
-                ValidationError::new("phonology_not_enough_vowels")
-                    .with_message("The phonology must have at least three vowels."),
-            );
+        if !self.patterns.iter().any(|p| p.weight.is_enabled()) {
+            error(&mut errors, "patterns", "no_enabled_patterns");
         }
-        let mut nucleus = NucleusConfiguration::new(
-            allowed_phonemes,
-            allowed_diphthongs,
-            allowed_triphthongs,
-            word_initial_only,
-            word_final_only,
-        );
-
-        match nucleus.validate() {
-            Ok(nucleus) => Ok(SyllableConfiguration {
-                patterns: self.patterns,
-                onset: self.onset,
-                nucleus,
-                coda: self.coda,
-                onset_state: std::marker::PhantomData,
-                nucleus_state: std::marker::PhantomData,
-                coda_state: std::marker::PhantomData,
-            }),
-            Err(e) => {
-                errors.merge(e);
-                Err(errors)
+        for pattern in &self.patterns {
+            // At least one word context must be able to realize the complete pattern.
+            if ![(true, true), (true, false), (false, true), (false, false)]
+                .iter()
+                .any(|&(first, last)| {
+                    self.has_choice(&self.onset, pattern.pattern.onset_size(), first, false)
+                        && self.has_choice(
+                            &self.nucleus,
+                            pattern.pattern.nucleus_size(),
+                            first && pattern.pattern.onset_size() == 0,
+                            last && pattern.pattern.coda_size() == 0,
+                        )
+                        && self.has_choice(&self.coda, pattern.pattern.coda_size(), false, last)
+                })
+            {
+                error(
+                    &mut errors,
+                    "patterns",
+                    "pattern_has_no_realizable_word_context",
+                );
+            }
+            for (name, count, rules) in [
+                ("onset", pattern.pattern.onset_size(), &self.onset),
+                ("nucleus", pattern.pattern.nucleus_size(), &self.nucleus),
+                ("coda", pattern.pattern.coda_size(), &self.coda),
+            ] {
+                if (rules.presence == Presence::Forbidden && count != 0)
+                    || (rules.presence == Presence::Required && count == 0)
+                {
+                    error(
+                        &mut errors,
+                        name,
+                        "pattern_conflicts_with_position_presence",
+                    );
+                }
+                if count > 0
+                    && !rules
+                        .choices
+                        .iter()
+                        .any(|c| c.sounds.len() == count && c.weight.is_enabled())
+                {
+                    error(&mut errors, name, "pattern_has_no_matching_sequence");
+                }
             }
         }
-    }
-}
-
-// Coda nur wenn noch nicht gesetzt
-impl<O, N> SyllableConfiguration<O, N, NoCoda> {
-    pub fn set_coda(
-        self,
-        allowed_phonemes: Vec<AllowedPhoneme>,
-        allowed_clusters: Vec<AllowedCluster>,
-        word_final_only: Vec<AllowedCluster>,
-    ) -> Result<SyllableConfiguration<O, N, WithCoda>, ValidationErrors> {
-        let mut errors = ValidationErrors::new();
-        let mut coda = CodaConfiguration::new(allowed_phonemes, allowed_clusters, word_final_only);
-
-        match coda.validate() {
-            Ok(coda) => Ok(SyllableConfiguration {
-                patterns: self.patterns,
-                onset: self.onset,
-                nucleus: self.nucleus,
-                coda,
-                onset_state: std::marker::PhantomData,
-                nucleus_state: std::marker::PhantomData,
-                coda_state: std::marker::PhantomData,
-            }),
-            Err(e) => {
-                errors.merge(e);
-                Err(errors)
+        for pair in &self.forbidden_boundaries {
+            if !inventory.contains(&pair.left) || !inventory.contains(&pair.right) {
+                error(&mut errors, "boundaries", "boundary_sound_not_in_inventory");
             }
         }
-    }
-}
-
-// add_pattern ist für alle States verfügbar
-impl<O, N, C> SyllableConfiguration<O, N, C> {
-    pub fn add_pattern(mut self, pattern: &str, weight: f32) -> Result<Self, ValidationErrors> {
-        let mut errors = ValidationErrors::new();
-
-        let mut new_pattern = SyllablePattern::new(pattern, weight);
-
-        if let Err(e) = new_pattern.validate_pattern() {
-            errors.merge(e);
-        }
-
         if errors.is_empty() {
-            self.patterns.push(new_pattern.parse());
-            Ok(self)
+            Ok(())
         } else {
             Err(errors)
         }
     }
-}
 
-impl Default for SyllableConfiguration<NoOnset, NoNucleus, NoCoda> {
-    fn default() -> Self {
-        Self::new()
+    fn has_choice(&self, rules: &PositionRules, count: usize, initial: bool, final_: bool) -> bool {
+        if count == 0 {
+            return rules.presence != Presence::Required;
+        }
+        rules.presence != Presence::Forbidden
+            && rules.choices.iter().any(|c| {
+                c.sounds.len() == count
+                    && c.weight.is_enabled()
+                    && match c.position {
+                        WordPosition::Any => true,
+                        WordPosition::InitialOnly => initial,
+                        WordPosition::FinalOnly => final_,
+                    }
+            })
+    }
+
+    pub(crate) fn check_word(&self, syllables: &[Syllable]) -> Result<(), ValidationErrors> {
+        let mut errors = ValidationErrors::new();
+        if syllables.is_empty() {
+            error(&mut errors, "word", "empty_word");
+        }
+        for (index, syllable) in syllables.iter().enumerate() {
+            if !self.patterns.iter().any(|p| {
+                p.weight.is_enabled()
+                    && p.pattern.matches(
+                        syllable.onset.len(),
+                        syllable.nucleus.len(),
+                        syllable.coda.len(),
+                    )
+            }) {
+                error(&mut errors, "syllables", "syllable_does_not_match_pattern");
+            }
+            let first = index == 0;
+            let last = index + 1 == syllables.len();
+            for (name, rules, sounds, initial, final_) in [
+                ("onset", &self.onset, &syllable.onset, first, false),
+                (
+                    "nucleus",
+                    &self.nucleus,
+                    &syllable.nucleus,
+                    first && syllable.onset.is_empty(),
+                    last && syllable.coda.is_empty(),
+                ),
+                ("coda", &self.coda, &syllable.coda, false, last),
+            ] {
+                if sounds.is_empty() {
+                    if rules.presence == Presence::Required {
+                        error(&mut errors, name, "required_position_is_empty");
+                    }
+                    continue;
+                }
+                let accepted = rules.presence != Presence::Forbidden
+                    && rules.choices.iter().any(|choice| {
+                        choice.weight.is_enabled()
+                            && choice
+                                .sounds
+                                .iter()
+                                .eq(sounds.iter().map(|segment| &segment.sound))
+                            && match choice.position {
+                                WordPosition::Any => true,
+                                WordPosition::InitialOnly => initial,
+                                WordPosition::FinalOnly => final_,
+                            }
+                    });
+                if !accepted {
+                    error(&mut errors, name, "sequence_not_permitted_here");
+                }
+            }
+        }
+        for pair in syllables.windows(2) {
+            if let (Some(left), Some(right)) =
+                (pair[0].sounds().next_back(), pair[1].sounds().next())
+            {
+                if self
+                    .forbidden_boundaries
+                    .iter()
+                    .any(|p| p.left == *left && p.right == *right)
+                {
+                    error(&mut errors, "boundaries", "forbidden_syllable_boundary");
+                }
+            }
+        }
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
     }
 }

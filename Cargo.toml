@@ -2,6 +2,7 @@
 name = "name_generator"
 version = "0.1.0"
 edition = "2021"
+autoexamples = false
 
 [dependencies]
 rand = "0.8"
@@ -15,3 +16,7 @@ colored = "2.1.0"
 anyhow = "1.0"
 
 [lib]
+
+[[example]]
+name = "lang"
+path = "examples/lang.rs"

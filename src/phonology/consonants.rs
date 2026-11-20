@@ -8,6 +8,6 @@ use super::consonants::{
     clicks::ALL_CLICKS, ejectives::ALL_EJECTIVES, implosives::ALL_IMPLOSIVES,
     pulmonics::ALL_PULMONICS,
 };
-pub fn all_consonants() -> Vec<&'static str> {
+pub fn all_consonants() -> Vec<&'static crate::phonology::SoundDefinition> {
     [ALL_PULMONICS, ALL_CLICKS, ALL_IMPLOSIVES, ALL_EJECTIVES].concat()
 }

@@ -199,7 +199,7 @@ impl std::fmt::Display for ValidationErrors {
                 .bold()
         )?;
         writeln!(f, "{}", "There are some errors:".bright_black())?;
-        writeln!(f, "")?; // Leere Zeile für Abstand
+        writeln!(f)?; // Leere Zeile für Abstand
 
         // --- Fehlerbaum ---
         self.fmt_recursive(f, "")?;

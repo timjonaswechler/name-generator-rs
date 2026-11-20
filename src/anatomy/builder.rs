@@ -1,143 +1,16 @@
-use crate::anatomy::speaker::{
-    AirflowControl, LarynxControl, LipControl, OralCavity, PulmonicControl, SpeakerAnatomy,
-    TeethConfiguration, TongueControl, TonguePartControl, VelicPortControl, VoicingControl,
-};
+use super::speaker::*;
+use crate::phonology::{ArticulationPlace, Manner, TongueHeight, TonguePosition};
 
 impl SpeakerAnatomy {
-    /// Erstellt einen neuen Builder mit Standardwerten für einen menschlichen Sprecher.
     pub fn new() -> Self {
-        Self {
-            oral_cavity: OralCavity {
-                teeth: TeethConfiguration::Human,
-                has_alveolar_ridge: true,
-                has_hard_palate: true,
-                has_soft_palate: true,
-                has_uvula: true,
-                has_epiglottis: true,
-            },
-            lips: LipControl::Flexible,
-            tongue: TongueControl {
-                tip: TonguePartControl::Agile,
-                blade: TonguePartControl::Agile,
-                body: TonguePartControl::Agile,
-                root: TonguePartControl::Agile,
-                can_curl_for_retroflex: true,
-                can_perform_lateral_release: true,
-            },
-            larynx: LarynxControl {
-                voicing: VoicingControl::Advanced,
-                can_produce_ejectives: true,
-            },
-            airflow: AirflowControl {
-                pulmonic: PulmonicControl::Advanced,
-                velic_port: VelicPortControl::Controllable,
-                can_produce_clicks: true,
-            },
-        }
+        Self::human()
     }
-    /// Fügt die Konfiguration der Mundhöhle hinzu.
-    pub fn oral_cavity(mut self, oral_cavity: OralCavity) -> Self {
-        self.oral_cavity = oral_cavity;
-        self
-    }
-    /// Fügt die Konfiguration der Zähne hinzu.
-    pub fn teeth(mut self, teeth: TeethConfiguration) -> Self {
-        self.oral_cavity.teeth = teeth;
-        self
-    }
-    pub fn oral_cavity_has_alveolar_ridge(mut self, has_alveolar_ridge: bool) -> Self {
-        self.oral_cavity.has_alveolar_ridge = has_alveolar_ridge;
-        self
-    }
-    pub fn oral_cavity_has_hard_palate(mut self, has_hard_palate: bool) -> Self {
-        self.oral_cavity.has_hard_palate = has_hard_palate;
-        self
-    }
-    pub fn oral_cavity_has_soft_palate(mut self, has_soft_palate: bool) -> Self {
-        self.oral_cavity.has_soft_palate = has_soft_palate;
-        self
-    }
-    pub fn oral_cavity_has_uvula(mut self, has_uvula: bool) -> Self {
-        self.oral_cavity.has_uvula = has_uvula;
-        self
-    }
-    pub fn oral_cavity_has_epiglottis(mut self, has_epiglottis: bool) -> Self {
-        self.oral_cavity.has_epiglottis = has_epiglottis;
-        self
-    }
-
-    /// Fügt die Lippenkontrolle hinzu.
-    pub fn lips(mut self, lips: LipControl) -> Self {
-        self.lips = lips;
-        self
-    }
-
-    /// Fügt die Zungenkontrolle hinzu.
-    pub fn tongue(mut self, tongue: TongueControl) -> Self {
-        self.tongue = tongue;
-        self
-    }
-    pub fn tongue_tip(mut self, tip: TonguePartControl) -> Self {
-        self.tongue.tip = tip;
-        self
-    }
-    pub fn tongue_blade(mut self, blade: TonguePartControl) -> Self {
-        self.tongue.blade = blade;
-        self
-    }
-    pub fn tongue_body(mut self, body: TonguePartControl) -> Self {
-        self.tongue.body = body;
-        self
-    }
-    pub fn tongue_root(mut self, root: TonguePartControl) -> Self {
-        self.tongue.root = root;
-        self
-    }
-    pub fn tongue_can_curl_for_retroflex(mut self, can_curl: bool) -> Self {
-        self.tongue.can_curl_for_retroflex = can_curl;
-        self
-    }
-    pub fn tongue_can_perform_lateral_release(mut self, can_release: bool) -> Self {
-        self.tongue.can_perform_lateral_release = can_release;
-        self
-    }
-
-    /// Fügt die Kehlkopfsteuerung hinzu.
-    pub fn larynx(mut self, larynx: LarynxControl) -> Self {
-        self.larynx = larynx;
-        self
-    }
-    pub fn larynx_voicing(mut self, voicing: VoicingControl) -> Self {
-        self.larynx.voicing = voicing;
-        self
-    }
-    pub fn larynx_can_produce_ejectives(mut self, can_produce: bool) -> Self {
-        self.larynx.can_produce_ejectives = can_produce;
-        self
-    }
-
-    /// Fügt die Luftstromkontrolle hinzu.
-    pub fn with_airflow(mut self, airflow: AirflowControl) -> Self {
-        self.airflow = airflow;
-        self
-    }
-    pub fn airflow_pulmonic(mut self, pulmonic: PulmonicControl) -> Self {
-        self.airflow.pulmonic = pulmonic;
-        self
-    }
-    pub fn airflow_velic_port(mut self, velic_port: VelicPortControl) -> Self {
-        self.airflow.velic_port = velic_port;
-        self
-    }
-    pub fn airflow_can_produce_clicks(mut self, can_produce: bool) -> Self {
-        self.airflow.can_produce_clicks = can_produce;
-        self
-    }
-
     pub fn human() -> Self {
         Self {
             oral_cavity: OralCavity {
                 teeth: TeethConfiguration::Human,
+                dental_contact: ContactCapability::Available,
+                labiodental_contact: ContactCapability::Available,
                 has_alveolar_ridge: true,
                 has_hard_palate: true,
                 has_soft_palate: true,
@@ -152,20 +25,113 @@ impl SpeakerAnatomy {
                 root: TonguePartControl::Agile,
                 can_curl_for_retroflex: true,
                 can_perform_lateral_release: true,
+                vowel_heights: vec![
+                    TongueHeight::Close,
+                    TongueHeight::NearClose,
+                    TongueHeight::CloseMid,
+                    TongueHeight::Mid,
+                    TongueHeight::OpenMid,
+                    TongueHeight::NearOpen,
+                    TongueHeight::Open,
+                ],
+                vowel_positions: vec![
+                    TonguePosition::Front,
+                    TonguePosition::NearFront,
+                    TonguePosition::Central,
+                    TonguePosition::NearBack,
+                    TonguePosition::Back,
+                ],
             },
             larynx: LarynxControl {
-                voicing: VoicingControl::Advanced,
+                voicing: VoicingCapabilities {
+                    voiced: true,
+                    voiceless: true,
+                },
+                can_aspirate: true,
+                can_produce_breathy_voice: true,
+                can_produce_creaky_voice: true,
+                can_close_glottis: true,
+                can_adjust_constriction: true,
                 can_produce_ejectives: true,
+                can_produce_implosives: true,
             },
             airflow: AirflowControl {
                 pulmonic: PulmonicControl::Advanced,
                 velic_port: VelicPortControl::Controllable,
                 can_produce_clicks: true,
             },
+            prosody: crate::prosody::ProsodicCapabilities::human(),
+            articulation: ArticulatoryCapabilities {
+                trills: vec![
+                    ArticulationPlace::Bilabial,
+                    ArticulationPlace::Alveolar,
+                    ArticulationPlace::Uvular,
+                ],
+                taps: vec![
+                    ArticulationPlace::Bilabial,
+                    ArticulationPlace::Labiodental,
+                    ArticulationPlace::Linguolabial,
+                    ArticulationPlace::Dental,
+                    ArticulationPlace::Alveolar,
+                    ArticulationPlace::Postalveolar,
+                    ArticulationPlace::Retroflex,
+                ],
+                can_coordinate_affricates: true,
+                can_double_articulate: true,
+                can_articulate_epiglottals: true,
+                can_fine_adjust: true,
+                can_rhoticize: true,
+                can_control_release: true,
+                syllabic_manners: vec![
+                    Manner::Nasal,
+                    Manner::Trill,
+                    Manner::TapFlap,
+                    Manner::Approximant,
+                    Manner::SibilantFricative,
+                    Manner::NonSibilantFricative,
+                    Manner::Fricative,
+                    Manner::LateralApproximant,
+                    Manner::LateralFricative,
+                ],
+            },
         }
     }
+    pub fn teeth(mut self, teeth: TeethConfiguration) -> Self {
+        self.oral_cavity.teeth = teeth;
+        let contact = match teeth {
+            TeethConfiguration::None => ContactCapability::Unavailable,
+            TeethConfiguration::Fangs => ContactCapability::Unspecified,
+            TeethConfiguration::Flat | TeethConfiguration::Human => ContactCapability::Available,
+        };
+        self.oral_cavity.dental_contact = contact;
+        self.oral_cavity.labiodental_contact = contact;
+        self
+    }
+    pub fn dental_contact(mut self, contact: ContactCapability) -> Self {
+        self.oral_cavity.dental_contact = contact;
+        self
+    }
+    pub fn labiodental_contact(mut self, contact: ContactCapability) -> Self {
+        self.oral_cavity.labiodental_contact = contact;
+        self
+    }
+    pub fn lips(mut self, lips: LipControl) -> Self {
+        self.lips = lips;
+        self
+    }
+    pub fn tongue(mut self, tongue: TongueControl) -> Self {
+        self.tongue = tongue;
+        self
+    }
+    pub fn larynx(mut self, larynx: LarynxControl) -> Self {
+        self.larynx = larynx;
+        self
+    }
+    pub fn with_airflow(mut self, airflow: AirflowControl) -> Self {
+        self.airflow = airflow;
+        self
+    }
 }
-
 impl Default for SpeakerAnatomy {
     fn default() -> Self {
         Self::human()

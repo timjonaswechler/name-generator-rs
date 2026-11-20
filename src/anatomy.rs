@@ -1,3 +1,5 @@
 pub mod builder;
-pub(crate) mod errors;
+mod errors;
+pub mod production;
 pub mod speaker;
+pub use errors::AnatomyReport;
